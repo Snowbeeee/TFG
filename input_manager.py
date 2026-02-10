@@ -56,6 +56,28 @@ class InputManager:
                 if id_val in self.KEY_MAP and keys[self.KEY_MAP[id_val]]:
                     return 1
             
+            elif dev_type == RETRO_DEVICE_ANALOG:
+                # Analog Input (Circle Pad / Sticks)
+                # index: 0 = Left Stick, 1 = Right Stick
+                # id_val: 0 = X Axis, 1 = Y Axis
+                if index == RETRO_DEVICE_INDEX_ANALOG_LEFT:
+                    val = 0
+                    keys = pygame.key.get_pressed()
+                    
+                    if id_val == RETRO_DEVICE_ID_ANALOG_X:
+                        if keys[K_RIGHT] or keys[K_l]: # Right
+                            val += 32767
+                        if keys[K_LEFT] or keys[K_j]:  # Left
+                            val -= 32768
+                    elif id_val == RETRO_DEVICE_ID_ANALOG_Y:
+                        if keys[K_DOWN] or keys[K_k]:  # Down
+                            val += 32767
+                        if keys[K_UP] or keys[K_i]:    # Up
+                            val -= 32768
+                    
+                    # Clamping
+                    return max(-32768, min(32767, val))
+
             elif dev_type == RETRO_DEVICE_POINTER:
                 # Pointer (Pantalla Táctil) - Index 0 es el primer dedo/ratón
                 if index == 0:

@@ -13,11 +13,11 @@ def main():
     pygame.display.set_mode((400, 480), OPENGL | DOUBLEBUF | RESIZABLE)
 
     # Rutas
-    # core_path = 'cores/citra_libretro.dll'
-    core_path = 'cores/desmume_libretro.dll'
+    core_path = 'cores/citra_libretro.dll'
+    # core_path = 'cores/melondsds_libretro.dll'
     # Ajusta esta ruta si es necesario o pásala como argumento
-    # rom_path = r"C:\Users\griva\Desktop\TFG\TFG\games\PokemonSol.3ds"
-    rom_path = r"C:\Users\griva\Desktop\TFG\TFG\games\PokemonNegro2.nds"
+    rom_path = "games/PokemonSol.3ds"
+    # rom_path = "games/PokemonNegro2.nds"
 
     if not os.path.exists(core_path):
         print(f"Error: No se encuentra el core en {core_path}")

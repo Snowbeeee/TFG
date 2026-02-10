@@ -31,6 +31,13 @@ if os.name == 'nt':
         _wgl_get_proc.argtypes = [ctypes.c_char_p]
     except Exception as e:
         print(f"Error cargando OpenGL lib: {e}")
+        
+        
+# ----------------------------------------------------------------------------------------------------------------
+#   Callbacks y funciones puente (thunks) para conectar el núcleo con Python
+# ----------------------------------------------------------------------------------------------------------------
+
+
 
 # Callback que permite al núcleo obtener direcciones de funciones OpenGL (proc address).
 # Es crucial para que el núcleo pueda llamar a funciones modernas de OpenGL de forma compatible entre plataformas.
@@ -93,6 +100,12 @@ def log_printf_thunk(level, fmt):
     except:
         pass
 
+
+# ----------------------------------------------------------------------------------------------------------------
+#   Clase principal RetroCore
+# ----------------------------------------------------------------------------------------------------------------
+
+
 # Clase principal que encapsula la lógica de carga, ejecución y gestión de un núcleo Libretro.
 # Maneja la interacción con la DLL, los contextos gráficos y los dispositivos de entrada/salida.
 class RetroCore:
@@ -130,6 +143,13 @@ class RetroCore:
         self.lib.retro_init()
         # Configurar puerto 0
         self.lib.retro_set_controller_port_device(0, RETRO_DEVICE_JOYPAD)
+        
+        # Configurar acceso a memoria (SRAM, RTC, etc)
+        self.lib.retro_get_memory_data.restype = ctypes.c_void_p
+        self.lib.retro_get_memory_data.argtypes = [ctypes.c_uint]
+
+        self.lib.retro_get_memory_size.restype = ctypes.c_size_t
+        self.lib.retro_get_memory_size.argtypes = [ctypes.c_uint]
         
         self.aspect_ratio = 0.0
         self.base_width = 0
@@ -192,9 +212,64 @@ class RetroCore:
         glBindFramebuffer(GL_FRAMEBUFFER, 0)
         print(f"FBO Inicializado: {width}x{height} (ID: {self.fbo_id})")
 
+    # Carga la partida guardada (SRAM) desde disco a la memoria del núcleo
+    def load_sram(self):
+        if not self.save_path:
+            return
+            
+        size = self.lib.retro_get_memory_size(RETRO_MEMORY_SAVE_RAM)
+        if size == 0:
+            return
+            
+        if os.path.exists(self.save_path):
+            with open(self.save_path, "rb") as f:
+                data = f.read()
+                if len(data) > size:
+                    print(f"Warning: Save file larger than core memory ({len(data)} > {size}). Truncating.")
+                    data = data[:size]
+                
+                ptr = self.lib.retro_get_memory_data(RETRO_MEMORY_SAVE_RAM)
+                if ptr:
+                    # Copiar datos
+                    ctypes.memmove(ptr, data, len(data))
+                    print(f"SRAM cargada desde {self.save_path}")
+
+    # Guarda la partida (SRAM) de la memoria del núcleo al disco
+    def save_sram(self):
+        if not self.save_path:
+            return
+            
+        size = self.lib.retro_get_memory_size(RETRO_MEMORY_SAVE_RAM)
+        ptr = self.lib.retro_get_memory_data(RETRO_MEMORY_SAVE_RAM)
+        
+        if size > 0 and ptr:
+            # Leer memoria
+            data = ctypes.string_at(ptr, size)
+            
+            # Verificar si el directorio saves existe
+            save_dir = os.path.dirname(self.save_path)
+            if not os.path.exists(save_dir):
+                os.makedirs(save_dir)
+                
+            with open(self.save_path, "wb") as f:
+                f.write(data)
+            print(f"SRAM guardada en {self.save_path}")
+
     # Carga un archivo de juego (ROM) en el núcleo.
     # Lee los datos del archivo, configura la memoria y establece los parámetros iniciales del sistema.
     def load_game(self, rom_path):
+        # Calcular path de guardado
+        # Usamos .sav para compatibilidad general (aunque algunos usan .dsv)
+        rom_name = os.path.splitext(os.path.basename(rom_path))[0]
+        self.save_path = os.path.abspath(os.path.join("saves", rom_name + ".dsv"))
+        # Si usas Desmume, a veces prefiere .dsv. Si usas otros, .srm o .sav.
+        # Libretro suele estandarizar a .srm, pero dejaremos .dsv para DS si prefieres.
+        # Ajuste dinámico: Si rom es .nds -> .dsv. Si .3ds -> .sav
+        if rom_path.lower().endswith('.nds'):
+             self.save_path = os.path.abspath(os.path.join("saves", rom_name + ".dsv"))
+        else:
+             self.save_path = os.path.abspath(os.path.join("saves", rom_name + ".sav"))
+
         # Obtener info del sistema
         self.lib.retro_get_system_info.argtypes = [ctypes.POINTER(RetroSystemInfo)]
         sys_info = RetroSystemInfo()
@@ -248,6 +323,9 @@ class RetroCore:
         # Inicializar FBO
         self.init_framebuffer(self.base_width, self.base_height)
         
+        # Cargar partida salvada si existe
+        self.load_sram()
+        
         print(f"Resolución base: {av_info.geometry.base_width}x{av_info.geometry.base_height}, FPS: {av_info.timing.fps}")
         return True
 
@@ -290,6 +368,9 @@ class RetroCore:
 
     # Descarga el juego actual y desinicializa el núcleo, liberando recursos.
     def unload(self):
+        # Guardar partida antes de descargar
+        self.save_sram()
+        
         self.lib.retro_unload_game()
         self.lib.retro_deinit()
 
@@ -297,27 +378,39 @@ class RetroCore:
     # Callback llamado por el núcleo cuando hay un nuevo frame de video listo para mostrar.
     # Realiza el blit (copiado) del FBO interno a la pantalla principal, aplicando el escalado calculado.
     def video_refresh(self, data, width, height, pitch):
-        # Manejar renderizado por Software (Desmume, etc)
-        # Si data es un puntero válido (no NULL y no RETRO_HW_FRAME_BUFFER_VALID/-1)
+        if width == 0 or height == 0:
+            return
+
+        # Manejar renderizado por Software (Desmume, etc) vs Hardware (Citra)
+        # Si data es un puntero válido (no NULL y no RETRO_HW_FRAME_BUFFER_VALID/-1), es software.
         is_software = False
         data_addr = 0
-        if data: # data no es None
-             try: 
-                data_addr = int(data) 
-             except: pass
-             
-        # RETRO_HW_FRAME_BUFFER_VALID suele ser -1. En Python ctypes puede ser -1 o un entero muy grande.
-        # Asumimos que si no es -1, es un puntero de memoria real.
-        if data_addr != 0 and data_addr != -1 and data_addr != 0xFFFFFFFFFFFFFFFF and data_addr != 0xFFFFFFFF:
+        if data: 
+            # Detección robusta de dirección de memoria
+            if isinstance(data, int):
+                data_addr = data
+            elif hasattr(data, 'value'):
+                data_addr = data.value
+            else:
+                try:
+                    data_addr = int(data)
+                except:
+                    pass
+        
+        # RETRO_HW_FRAME_BUFFER_VALID suele ser -1 (hardware rendering).
+        # También verificamos 0 y valores de puntero inválido comunes.
+        # Citra (HW) enviará -1 (u oscilará como unsigned). Desmume (SW) enviará una dirección RAM válida.
+        if data_addr not in (0, -1, 0xFFFFFFFF, 0xFFFFFFFFFFFFFFFF):
             is_software = True
         
+        # Si es modo Software, necesitamos subir la textura a OpenGL
         if is_software:
-            # Inicializar FBO si no existe o si el tamaño cambió (aunque init_framebuffer es costoso, los cores SW no suelen cambiar res cada frame)
+            # Inicializar FBO si no existe o si el tamaño cambió
             if self.fbo_id == 0 or self.fbo_width != width or self.fbo_height != height:
                 self.init_framebuffer(width, height)
-                self.base_width = width
-                self.base_height = height
-                # Actualizar input manager por si acaso
+                self.fbo_width = width
+                self.fbo_height = height
+                # Actualizar geometría base si cambió
                 self.input_manager.update_geometry(width, height, self.aspect_ratio)
             
             # Subir textura
@@ -330,25 +423,38 @@ class RetroCore:
                  gl_type = GL_UNSIGNED_SHORT_5_6_5
                  bpp = 2
             elif self.pixel_format == RETRO_PIXEL_FORMAT_0RGB1555:
+                 # 0RGB1555: 1 bit vacio (A), R, G, B.
+                 # GL_UNSIGNED_SHORT_1_5_5_5_REV + GL_BGRA mapea correctamente A(15) R(14-10) G(9-5) B(4-0)
                  gl_fmt = GL_BGRA
                  gl_type = GL_UNSIGNED_SHORT_1_5_5_5_REV
                  bpp = 2
             elif self.pixel_format == RETRO_PIXEL_FORMAT_XRGB8888:
+                 # XRGB8888: Byte order B G R X en Little Endian.
+                 # GL_BGRA + GL_UNSIGNED_BYTE lee Byte0=B, Byte1=G, Byte2=R, Byte3=A(X)
                  gl_fmt = GL_BGRA
-                 gl_type = GL_UNSIGNED_INT_8_8_8_8_REV
+                 gl_type = GL_UNSIGNED_BYTE
                  bpp = 4
 
             glBindTexture(GL_TEXTURE_2D, self.tex_id)
-            glPixelStorei(GL_UNPACK_ROW_LENGTH, pitch // bpp)
+            
+            # Asegurar alineación de 1 byte
+            glPixelStorei(GL_UNPACK_ALIGNMENT, 1)
+            
+            if pitch > 0:
+                glPixelStorei(GL_UNPACK_ROW_LENGTH, pitch // bpp)
+            
             glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, height, gl_fmt, gl_type, ctypes.c_void_p(data_addr))
+            
             glPixelStorei(GL_UNPACK_ROW_LENGTH, 0)
+            glPixelStorei(GL_UNPACK_ALIGNMENT, 4)
             glBindTexture(GL_TEXTURE_2D, 0)
 
+        # Si no tenemos FBO (ni por HW init ni por SW init), salimos
         if self.fbo_id == 0: 
             return
         
         # Blit del FBO a pantalla
-        glDisable(GL_SCISSOR_TEST) # Asegurar que no hay recorte
+        glDisable(GL_SCISSOR_TEST) 
         glBindFramebuffer(GL_READ_FRAMEBUFFER, self.fbo_id)
         glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0)
         
@@ -358,36 +464,22 @@ class RetroCore:
         
         dst_x, dst_y, dst_w, dst_h = self.view_rect
         
-        # Origen del render (Depende de bottom_left_origin)
+        # Calcular coordenadas de origen (flip vertical)
+        # HW Render: Depende de bottom_left_origin (True = Normal, False = Flipped/Top-Left)
+        # SW Render: Datos cargados Bottom-Up o Top-Down?
+        # En la version anterior estaba "src_y0=0, src_y1=height" (NO Flip) y salia invertido.
+        # Por lo tanto, debemos invertirlo.
+        must_flip_y = is_software or (not self.bottom_left_origin)
+
         src_y0 = 0
-        src_y1 = self.base_height
+        src_y1 = height # Usamos height del frame actual para mapear correctamente la textura
         
-        if not self.bottom_left_origin:
-             # Invertir Y si el origen es Top-Left
-             src_y0 = self.base_height
+        if must_flip_y:
+             src_y0 = height
              src_y1 = 0
-             
-        # Si es Software render, usualmente es Top-Left, pero init_framebuffer crea textura estándar.
-        # Al subirla con glTexSubImage2D, el origen de la TEXTURA es abajo-izquierda en OpenGL por defecto? No, 
-        # Las imágenes en memoria suelen ser Top-Left. OpenGL 0,0 es Bottom-Left.
-        # Si subimos directo, la imagen saldrá invertida si no tenemos cuidado.
-        # Desmume (Software) -> Top-Left pixel array.
-        # glTexImage2D espera pixels de abajo arriba? Depende.
-        # Normalmente cores SW mandan Top-left first. 
-        # Si HW Render (Citra) -> Renderiza OK en framebuffer.
-        # Ajustaremos si sale al revés. Asumamos Top-Left para software (igual que HW Render con bottom_left_origin=False o True dependiendo del core).
-        # Para Desmume, probemos: Si sale invertido, cambiar coordenadas.
-        # RetroArch normaliza esto, pero aquí lo hacemos manual.
-        # Si es software, forzar coordenadas de "imagen normal" -> src_y0=0, src_y1=height (pero invertido para que GL lo pinte derecho?)
-        # Dejémoslo con la lógica de bottom_left_origin por defecto (True) y si falla corregimos.
-        # NOTA: Desmume SW no define bottom_left_origin (es solo para HW render callback).
-        # Asumiremos Top-Left para SW.
-        if is_software:
-             src_y0 = 0
-             src_y1 = self.base_height 
-             # Si sale al revés, invertir estos dos.
         
-        glBlitFramebuffer(0, src_y0, self.base_width, src_y1, 
+        # Usamos 'width' del frame actual como ancho fuente
+        glBlitFramebuffer(0, src_y0, width, src_y1, 
                           dst_x, dst_y, dst_x + dst_w, dst_y + dst_h, 
                           GL_COLOR_BUFFER_BIT, GL_LINEAR)
         
