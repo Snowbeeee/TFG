@@ -107,3 +107,12 @@ class RetroHWRenderCallback(ctypes.Structure):
         ("context_destroy", c_hw_context_reset_t),
         ("debug_context", ctypes.c_bool),
     ]
+    
+class RetroInputDescriptor(ctypes.Structure):
+    _fields_ = [
+        ("port", ctypes.c_uint),
+        ("device", ctypes.c_uint),
+        ("index", ctypes.c_uint),
+        ("id", ctypes.c_uint),
+        ("description", ctypes.c_char_p),
+    ]

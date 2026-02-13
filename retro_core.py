@@ -123,6 +123,8 @@ class RetroCore:
         self.context_reset_cb = None
         self._hw_refs = [] # Para evitar GC
         
+        print("Registrando input callbacks")
+        
         # Instanciar callbacks
         self.video_cb = c_video_refresh_t(video_refresh_thunk)
         self.env_cb = c_environment_t(environment_thunk)
@@ -165,6 +167,10 @@ class RetroCore:
         self.pixel_format = RETRO_PIXEL_FORMAT_0RGB1555 # Default
         self.fbo_width = 0
         self.fbo_height = 0
+        self.target_fbo = None # None means auto-detect via glGetIntegerv
+
+    def set_target_fbo(self, fbo):
+        self.target_fbo = fbo
 
     # Devuelve el ID numérico del Framebuffer Object (FBO) actual.
     def get_framebuffer(self):
@@ -454,11 +460,27 @@ class RetroCore:
             return
         
         # Blit del FBO a pantalla
-        glDisable(GL_SCISSOR_TEST) 
-        glBindFramebuffer(GL_READ_FRAMEBUFFER, self.fbo_id)
-        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0)
+        glDisable(GL_SCISSOR_TEST)
         
-        # Limpiar default buffer (bordes negros)
+        # Obtener el FBO actual (importante para integración con Qt/SDL donde el buffer por defecto no es 0)
+        prev_fbo = 0
+        if self.target_fbo is not None:
+             prev_fbo = self.target_fbo
+        else:    
+             prev_fbo = glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING)
+        
+        # Debug
+        # print(f"Blit: ID {self.fbo_id} -> {prev_fbo} | Size {width}x{height}")
+        
+        glBindFramebuffer(GL_READ_FRAMEBUFFER, self.fbo_id)
+        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, prev_fbo)
+        
+        # Si estamos dibujando en un FBO de Qt, NO debemos hacer glClear completo si no queremos borrar el fondo
+        # Pero si el juego debe ocupar todo el área asignada, limpia el área de destino.
+        # glClear afectará a TODO el framebuffer si no usamos Scissor.
+        # Si prev_fbo es el widget, queremos limpiar solo el área del juego o todo el widget?
+        # Normalmente todo el widget.
+        
         glClearColor(0,0,0,1)
         glClear(GL_COLOR_BUFFER_BIT)
         
@@ -570,6 +592,43 @@ class RetroCore:
         if cmd != RETRO_ENVIRONMENT_GET_VARIABLE_UPDATE:
             # print(f"[ENV] Comando NO MANEJADO: {cmd}")
             pass
+        
+        elif cmd == RETRO_ENVIRONMENT_SET_INPUT_DESCRIPTORS:
+
+            print("[ENV] Registrando touchscreen descriptors")
+
+            descriptors = (RetroInputDescriptor * 4)()
+
+            descriptors[0] = RetroInputDescriptor(
+                port=0,
+                device=RETRO_DEVICE_POINTER,
+                index=0,
+                id=RETRO_DEVICE_ID_POINTER_X,
+                description=b"Touch X"
+            )
+
+            descriptors[1] = RetroInputDescriptor(
+                port=0,
+                device=RETRO_DEVICE_POINTER,
+                index=0,
+                id=RETRO_DEVICE_ID_POINTER_Y,
+                description=b"Touch Y"
+            )
+
+            descriptors[2] = RetroInputDescriptor(
+                port=0,
+                device=RETRO_DEVICE_POINTER,
+                index=0,
+                id=RETRO_DEVICE_ID_POINTER_PRESSED,
+                description=b"Touch Press"
+            )
+
+            descriptors[3] = RetroInputDescriptor()  # terminador
+
+            ctypes.memmove(data, descriptors, ctypes.sizeof(descriptors))
+
+            return True
+        
         return False
 
     # Recibe un bloque de muestras de audio desde el núcleo y las envía al gestor de audio para su reproducción.
@@ -592,7 +651,4 @@ class RetroCore:
     # Consulta el estado de un botón, eje o coordenada específica de un dispositivo de entrada.
     # Devuelve 1 si está presionado, 0 si no, o el valor del eje/coordenada.
     def input_state(self, port, device, index, id_val):
-        # logging para debuggear pointer
-        # if (device & RETRO_DEVICE_MASK) == RETRO_DEVICE_POINTER:
-        #    print(f"Polling Pointer: P{port} I{index} ID{id_val}")
         return self.input_manager.get_state(port, device, index, id_val)
