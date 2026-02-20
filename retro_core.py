@@ -387,11 +387,14 @@ class RetroCore:
 
     # Descarga el juego actual y desinicializa el núcleo, liberando recursos.
     def unload(self):
+        if not self.lib:
+            return
         # Guardar partida antes de descargar
         self.save_sram()
         
         self.lib.retro_unload_game()
         self.lib.retro_deinit()
+        self.lib = None
 
     # Implementación de callbacks
     # Callback llamado por el núcleo cuando hay un nuevo frame de video listo para mostrar.

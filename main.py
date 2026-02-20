@@ -1,7 +1,7 @@
 import sys
 import os
 from PyQt6.QtWidgets import QApplication
-from ui.main_window import MainWindow
+from ui.mainWindow import MainWindow
 
 def get_base_path():
     """Devuelve la ruta base del proyecto, compatible con PyInstaller."""

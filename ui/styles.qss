@@ -10,13 +10,31 @@ QWidget#centralwidget {
     background-color: #3498db;
 }
 
-/* Widget contenedor */
-QWidget#widget {
+/* Página del menú */
+QWidget#menuPage {
+    background-color: #3498db;
+}
+
+/* Botón Jugar */
+QPushButton#pushButtonJugar {
+    background-color: #2ecc71;
+    color: #ffffff;
+    font-size: 24px;
+    padding: 20px;
+    border-radius: 10px;
+}
+
+QPushButton#pushButtonJugar:hover {
+    background-color: #27ae60;
+}
+
+/* Widget contenedor del juego */
+QWidget#gameWidget {
     background-color: red;
 }
 
-/* Botón */
-QPushButton#pushButton {
+/* Botón Salir */
+QPushButton#pushButtonSalir {
     background-color: #000000;
     color: #ffffff;
 }

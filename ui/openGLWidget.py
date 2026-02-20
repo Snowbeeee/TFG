@@ -16,7 +16,7 @@ def _get_base_path():
         return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
-class RetroOpenGLWidget(QOpenGLWidget):
+class OpenGLWidget(QOpenGLWidget):
     def __init__(self, parent=None, core_path=None, rom_path=None):
         super().__init__(parent)
         self.core_path = core_path
@@ -41,7 +41,7 @@ class RetroOpenGLWidget(QOpenGLWidget):
             self.core_path = os.path.join(base, 'cores/citra_libretro.dll')
             # self.core_path = os.path.join(base, 'cores/melondsds_libretro.dll')
         if not self.rom_path:
-            self.rom_path = os.path.join(base, "games/IE3Ogre.3ds")
+            self.rom_path = os.path.join(base, "games/PokemonSol.3ds")
             # self.rom_path = os.path.join(base, "games/LegendOfZeldaPhantomHourglass.nds")
 
         if not os.path.exists(self.core_path):
