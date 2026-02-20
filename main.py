@@ -48,11 +48,11 @@ class RetroOpenGLWidget(QOpenGLWidget):
         # Rutas por defecto si no se pasan
         base = get_base_path()
         if not self.core_path:
-            # self.core_path = os.path.join(base, 'cores/citra_libretro.dll')
-            self.core_path = os.path.join(base, 'cores/melondsds_libretro.dll')
+            self.core_path = os.path.join(base, 'cores/citra_libretro.dll')
+            # self.core_path = os.path.join(base, 'cores/melondsds_libretro.dll')
         if not self.rom_path:
-            # self.rom_path = os.path.join(base, "games/PokemonSol.3ds")
-            self.rom_path = os.path.join(base, "games/LegendOfZeldaPhantomHourglass.nds")
+            self.rom_path = os.path.join(base, "games/PokemonSol.3ds")
+            # self.rom_path = os.path.join(base, "games/LegendOfZeldaPhantomHourglass.nds")
 
         if not os.path.exists(self.core_path):
             print(f"Error: No se encuentra el core en {self.core_path}")

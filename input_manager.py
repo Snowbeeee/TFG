@@ -67,7 +67,7 @@ class QtInputManager:
 
     def handle_mouse_release(self, x, y):
         self.touch_pressed = False
-        # No limpiar _touch_latched aquí; se limpia cuando el core lo lee
+        self._touch_latched = False  # Limpiar latch al soltar
         self._update_touch(x, y)
 
     def handle_mouse_move(self, x, y):
@@ -143,7 +143,6 @@ class QtInputManager:
             elif id_val == 1: # Y
                 return self.touch_y
             elif id_val == 2: # Pressed
-                # Usar latch: si hubo un press desde el último poll, reportarlo
                 pressed = self.touch_pressed or self._touch_latched
                 self._touch_latched = False  # Consumir el latch
                 return 1 if pressed else 0
@@ -151,7 +150,7 @@ class QtInputManager:
         elif dev_type == RETRO_DEVICE_MOUSE:
             if id_val == RETRO_DEVICE_ID_MOUSE_LEFT:
                 pressed = self.touch_pressed or self._touch_latched
-                # No limpiar latch aquí, se limpia en POINTER_PRESSED
+                self._touch_latched = False  # Consumir latch (el core de Citra usa MOUSE, no POINTER)
                 return 1 if pressed else 0
 
         return 0
