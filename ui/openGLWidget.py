@@ -17,53 +17,75 @@ def _get_base_path():
 
 
 class OpenGLWidget(QOpenGLWidget):
-    def __init__(self, parent=None, core_path=None, rom_path=None):
+    def __init__(self, parent=None):
         super().__init__(parent)
-        self.core_path = core_path
-        self.rom_path = rom_path
+        self.core_path = None
+        self.rom_path = None
         self.core = None
         self.audio_mgr = None
         self.input_mgr = None
         self.initialized = False
+        self.gl_ready = False
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self.setMouseTracking(True)
         self.setAttribute(Qt.WidgetAttribute.WA_OpaquePaintEvent)
         self.setAttribute(Qt.WidgetAttribute.WA_NoSystemBackground)
-        
+
     def initializeGL(self):
-        if self.initialized:
-            return
-            
+        """Se llama una sola vez por Qt cuando el contexto GL está listo."""
+        self.gl_ready = True
+        # Si hay un juego pendiente de cargar, cargarlo ahora
+        if self.core_path and self.rom_path and not self.initialized:
+            self._load_core()
+
+    def load_game(self, core_path, rom_path):
+        """Carga un juego. Si el contexto GL ya existe, carga inmediatamente.
+        Si no, se cargará cuando initializeGL sea llamado por Qt."""
+        # Descargar juego anterior si lo hay
+        self.unload_game()
+        self.core_path = core_path
+        self.rom_path = rom_path
+        if self.gl_ready:
+            self._load_core()
+
+    def _load_core(self):
+        """Lógica interna de carga del core y el juego."""
         print("Inicializando GL en RetroWidget...")
-        
-        base = _get_base_path()
-        if not self.core_path:
-            self.core_path = os.path.join(base, 'cores/citra_libretro.dll')
-            # self.core_path = os.path.join(base, 'cores/melondsds_libretro.dll')
-        if not self.rom_path:
-            self.rom_path = os.path.join(base, "games/PokemonSol.3ds")
-            # self.rom_path = os.path.join(base, "games/LegendOfZeldaPhantomHourglass.nds")
+
+        if not self.core_path or not self.rom_path:
+            print("Error: No se ha proporcionado core_path o rom_path")
+            return
 
         if not os.path.exists(self.core_path):
             print(f"Error: No se encuentra el core en {self.core_path}")
             return
-            
-        if not os.path.exists(self.rom_path):
-            print(f"Error: ROM no encontrada (se verificará en load_game)")
 
-        # Managers
+        if not os.path.exists(self.rom_path):
+            print(f"Error: ROM no encontrada en {self.rom_path}")
+            return
+
         self.audio_mgr = AudioManager()
         self.input_mgr = QtInputManager()
-        
-        # Core
         self.core = RetroCore(self.core_path, self.audio_mgr, self.input_mgr)
-        
-        # Load Game
+
         if self.core.load_game(self.rom_path):
             self.initialized = True
             print("Juego iniciado en Qt!")
         else:
             print("Fallo al iniciar el juego")
+
+    def unload_game(self):
+        """Descarga el core y el audio, dejando el widget GL vivo."""
+        if self.core:
+            self.core.unload()
+            self.core = None
+        if self.audio_mgr:
+            self.audio_mgr.stop()
+            self.audio_mgr = None
+        self.input_mgr = None
+        self.initialized = False
+        self.core_path = None
+        self.rom_path = None
 
     def resizeGL(self, w, h):
         if self.core:
@@ -76,7 +98,7 @@ class OpenGLWidget(QOpenGLWidget):
             self.input_mgr.update_viewport(vx, vy, vw, vh)
 
     def paintGL(self):
-        if self.initialized and self.core:
+        if self.initialized and self.core and self.core.lib:
             from OpenGL.GL import glGetIntegerv, GL_DRAW_FRAMEBUFFER_BINDING
             current_fbo = glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING)
             self.core.set_target_fbo(current_fbo)
@@ -122,8 +144,5 @@ class OpenGLWidget(QOpenGLWidget):
         event.accept()
 
     def closeEvent(self, event):
-        if self.core:
-            self.core.unload()
-        if self.audio_mgr:
-            self.audio_mgr.stop()
+        self.unload_game()
         super().closeEvent(event)

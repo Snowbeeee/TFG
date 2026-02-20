@@ -475,6 +475,10 @@ class RetroCore:
         if self.fbo_id == 0: 
             return
         
+        # Limpiar errores GL pendientes del core antes de hacer blit
+        while glGetError() != GL_NO_ERROR:
+            pass
+
         # Blit del FBO a pantalla
         glDisable(GL_SCISSOR_TEST)
         

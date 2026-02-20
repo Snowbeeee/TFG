@@ -28,6 +28,5 @@ class GameWindowUI:
         self.horizontalLayout.addWidget(self.pushButtonSalir, 30)
 
         # Placeholder (se reemplazará por el OpenGLWidget real)
-        self.openGLWidget = QWidget()
-        self.openGLWidget.setObjectName("openGLWidget")
-        self.horizontalLayout.addWidget(self.openGLWidget, 70)
+        self.openglContainer = QWidget()
+        self.horizontalLayout.addWidget(self.openglContainer, 70)
