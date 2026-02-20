@@ -69,6 +69,11 @@ class MainWindow(QMainWindow):
         """Vuelve al menú (el juego ya fue descargado por GameWindow)."""
         self.ui.stackedWidget.setCurrentIndex(0)
 
+    def showEvent(self, event):
+        """Reflow inicial cuando la ventana ya tiene su tamaño real."""
+        super().showEvent(event)
+        self.ui._reflow_grid()
+
     def resizeEvent(self, event):
         """Recalcula las columnas del grid al redimensionar la ventana."""
         super().resizeEvent(event)
