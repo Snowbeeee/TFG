@@ -169,6 +169,19 @@ class RetroCore:
         self.fbo_height = 0
         self.target_fbo = None # None means auto-detect via glGetIntegerv
 
+        # Diccionario de opciones del core (variables).
+        # Aquí se definen los valores que el frontend devuelve al core cuando este solicita
+        # una variable mediante RETRO_ENVIRONMENT_GET_VARIABLE.
+        # Se usa para forzar configuraciones como el idioma en español.
+        self.core_options = {
+            # melonDS DS - Idioma del firmware
+            'melonds_firmware_language': 'es',
+            # Citra - Idioma del sistema 3DS
+            'citra_language': 'Spanish',
+            # Citra - Región del sistema 3DS (Auto para que se aplique el idioma)
+            'citra_region_value': 'Auto',
+        }
+
     def set_target_fbo(self, fbo):
         self.target_fbo = fbo
 
@@ -541,6 +554,16 @@ class RetroCore:
 
         elif cmd == RETRO_ENVIRONMENT_GET_VARIABLE:
             var = ctypes.cast(data, ctypes.POINTER(RetroVariable)).contents
+            key = var.key.decode('utf-8') if var.key else ''
+            if key in self.core_options:
+                val = self.core_options[key].encode('utf-8')
+                # Mantener referencia para evitar que el GC libere la memoria
+                # antes de que el core la lea.
+                if not hasattr(self, '_option_refs'):
+                    self._option_refs = {}
+                self._option_refs[key] = ctypes.c_char_p(val)
+                var.value = self._option_refs[key]
+                return True
             var.value = None
             return True
 
@@ -581,54 +604,23 @@ class RetroCore:
             p_bool[0] = False
             return True
 
+        elif cmd == RETRO_ENVIRONMENT_GET_LANGUAGE:
+            p_lang = ctypes.cast(data, ctypes.POINTER(ctypes.c_uint))
+            p_lang[0] = RETRO_LANGUAGE_SPANISH
+            print("[ENV] GET_LANGUAGE -> Español (3)")
+            return True
+
         elif cmd == RETRO_ENVIRONMENT_GET_PREFERRED_HW_RENDER:
             p_uint = ctypes.cast(data, ctypes.POINTER(ctypes.c_uint))
             p_uint[0] = 1 # RETRO_HW_CONTEXT_OPENGL
             return True
 
-        elif cmd in [RETRO_ENVIRONMENT_SET_INPUT_DESCRIPTORS, RETRO_ENVIRONMENT_SET_VARIABLES, RETRO_ENVIRONMENT_SET_CORE_OPTIONS, RETRO_ENVIRONMENT_SET_CORE_OPTIONS_V2]:
-            return True
-
-        if cmd != RETRO_ENVIRONMENT_GET_VARIABLE_UPDATE:
-            # print(f"[ENV] Comando NO MANEJADO: {cmd}")
-            pass
-        
-        elif cmd == RETRO_ENVIRONMENT_SET_INPUT_DESCRIPTORS:
-
-            print("[ENV] Registrando touchscreen descriptors")
-
-            descriptors = (RetroInputDescriptor * 4)()
-
-            descriptors[0] = RetroInputDescriptor(
-                port=0,
-                device=RETRO_DEVICE_POINTER,
-                index=0,
-                id=RETRO_DEVICE_ID_POINTER_X,
-                description=b"Touch X"
-            )
-
-            descriptors[1] = RetroInputDescriptor(
-                port=0,
-                device=RETRO_DEVICE_POINTER,
-                index=0,
-                id=RETRO_DEVICE_ID_POINTER_Y,
-                description=b"Touch Y"
-            )
-
-            descriptors[2] = RetroInputDescriptor(
-                port=0,
-                device=RETRO_DEVICE_POINTER,
-                index=0,
-                id=RETRO_DEVICE_ID_POINTER_PRESSED,
-                description=b"Touch Press"
-            )
-
-            descriptors[3] = RetroInputDescriptor()  # terminador
-
-            ctypes.memmove(data, descriptors, ctypes.sizeof(descriptors))
-
+        elif cmd in [RETRO_ENVIRONMENT_SET_INPUT_DESCRIPTORS, RETRO_ENVIRONMENT_SET_VARIABLES]:
             return True
         
+        elif cmd in [RETRO_ENVIRONMENT_SET_CORE_OPTIONS, RETRO_ENVIRONMENT_SET_CORE_OPTIONS_V2]:
+            return True
+
         return False
 
     # Recibe un bloque de muestras de audio desde el núcleo y las envía al gestor de audio para su reproducción.

@@ -1,0 +1,22 @@
+/* Estilo principal de la aplicación */
+
+/* Ventana principal */
+QMainWindow#MainWindow {
+    background-color: #3498db;
+}
+
+/* Central widget */
+QWidget#centralwidget {
+    background-color: #3498db;
+}
+
+/* Widget contenedor */
+QWidget#widget {
+    background-color: red;
+}
+
+/* Botón */
+QPushButton#pushButton {
+    background-color: #000000;
+    color: #ffffff;
+}
