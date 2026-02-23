@@ -84,6 +84,7 @@ class MainWindowUI:
         self.gridLayout = QGridLayout(self.gridContainer)
         self.gridLayout.setSpacing(20)
         self.gridLayout.setContentsMargins(10, 10, 10, 10)
+        self.gridLayout.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)
         self.scrollArea.setWidget(self.gridContainer)
 
         menuLayout.addWidget(rightPanel)
@@ -224,4 +225,4 @@ class MainWindowUI:
         for i, carta in enumerate(self._cartas):
             fila = i // columnas
             col = i % columnas
-            self.gridLayout.addWidget(carta, fila, col, Qt.AlignmentFlag.AlignCenter)
+            self.gridLayout.addWidget(carta, fila, col, Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)

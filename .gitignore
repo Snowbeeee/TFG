@@ -3,6 +3,7 @@ games/
 .vscode/
 .idea/
 /system/melonDS DS/
+/build.bat
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
