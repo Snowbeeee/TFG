@@ -42,3 +42,46 @@ QSlider#volumeSlider::sub-page:horizontal {
     background: #3498db;
     border-radius: 3px;
 }
+
+QComboBox#configCombo {
+    background-color: #34495e;
+    color: #ecf0f1;
+    font-size: 14px;
+    padding: 6px 12px;
+    border: 1px solid #4a6278;
+    border-radius: 4px;
+    min-width: 160px;
+}
+
+QComboBox#configCombo:hover {
+    border-color: #3498db;
+}
+
+QComboBox#configCombo::drop-down {
+    border: none;
+    width: 28px;
+}
+
+QComboBox#configCombo::down-arrow {
+    image: none;
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    border-top: 6px solid #ecf0f1;
+    margin-right: 8px;
+}
+
+QComboBox#configCombo QAbstractItemView {
+    background-color: #34495e;
+    color: #ecf0f1;
+    selection-background-color: #3498db;
+    selection-color: #ffffff;
+    border: 1px solid #4a6278;
+    outline: none;
+}
+
+QLabel#configNote {
+    color: #7f8c8d;
+    font-size: 12px;
+    font-style: italic;
+    padding-left: 4px;
+}

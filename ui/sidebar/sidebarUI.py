@@ -1,8 +1,11 @@
+import os
+
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
     QScrollArea, QFrame
 )
-from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtCore import Qt, pyqtSignal, QSize
+from PyQt6.QtGui import QIcon, QPixmap
 from lista import Lista, SIN_LISTA
 
 
@@ -29,7 +32,7 @@ class _ListaSeccion(QWidget):
         row_layout.setSpacing(0)
 
         # Botón flecha (solo colapsa/expande)
-        self.arrow_btn = QPushButton("▼")
+        self.arrow_btn = QPushButton("−")
         self.arrow_btn.setObjectName("sidebarArrowBtn")
         self.arrow_btn.setFixedWidth(36)
         self.arrow_btn.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -56,7 +59,7 @@ class _ListaSeccion(QWidget):
     def _toggle(self):
         self._colapsado = not self._colapsado
         self.items_container.setVisible(not self._colapsado)
-        self.arrow_btn.setText("▶" if self._colapsado else "▼")
+        self.arrow_btn.setText("+" if self._colapsado else "−")
 
     def set_juegos(self, juegos):
         """Llena la sección con los nombres de los juegos dados."""
@@ -69,6 +72,10 @@ class _ListaSeccion(QWidget):
             btn.setObjectName("sidebarGameItem")
             btn.setCursor(Qt.CursorShape.PointingHandCursor)
             btn.setProperty("nombre_archivo", juego.nombre_archivo)
+            # Icono del juego
+            if juego.imagen and os.path.isfile(juego.imagen):
+                btn.setIcon(QIcon(QPixmap(juego.imagen)))
+                btn.setIconSize(QSize(16, 16))
             btn.clicked.connect(lambda checked, na=juego.nombre_archivo: self.juego_clicked.emit(na))
             self.items_layout.addWidget(btn)
             self._items.append(btn)

@@ -26,6 +26,7 @@ class OpenGLWidget(QOpenGLWidget):
         self.input_mgr = None
         self.initialized = False
         self.gl_ready = False
+        self.core_options_extra = {}  # Opciones adicionales del frontend (resolución, etc.)
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self.setMouseTracking(True)
         self.setAttribute(Qt.WidgetAttribute.WA_OpaquePaintEvent)
@@ -70,6 +71,9 @@ class OpenGLWidget(QOpenGLWidget):
         self.audio_mgr = AudioManager()
         self.input_mgr = QtInputManager()
         self.core = RetroCore(self.core_path, self.audio_mgr, self.input_mgr)
+        # Aplicar opciones extra del frontend (resolución, etc.)
+        for key, val in self.core_options_extra.items():
+            self.core.set_option(key, val)
 
         if self.core.load_game(self.rom_path):
             self.initialized = True

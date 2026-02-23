@@ -14,6 +14,7 @@ RETRO_ENVIRONMENT_GET_SAVE_DIRECTORY = 31
 RETRO_ENVIRONMENT_SET_GEOMETRY = 37
 RETRO_ENVIRONMENT_SET_CORE_OPTIONS = 53
 RETRO_ENVIRONMENT_SET_CORE_OPTIONS_V2 = 67
+RETRO_ENVIRONMENT_GET_CORE_OPTIONS_VERSION = 52
 RETRO_ENVIRONMENT_GET_PREFERRED_HW_RENDER = 56
 RETRO_ENVIRONMENT_GET_LANGUAGE = 39
 
@@ -118,4 +119,50 @@ class RetroInputDescriptor(ctypes.Structure):
         ("index", ctypes.c_uint),
         ("id", ctypes.c_uint),
         ("description", ctypes.c_char_p),
+    ]
+
+# --- Estructuras para opciones del core ---
+
+RETRO_NUM_CORE_OPTION_VALUES_MAX = 128
+
+class RetroCoreOptionValue(ctypes.Structure):
+    _fields_ = [
+        ("value", ctypes.c_char_p),
+        ("label", ctypes.c_char_p),
+    ]
+
+class RetroCoreOptionDefinition(ctypes.Structure):
+    """retro_core_option_definition (SET_CORE_OPTIONS)."""
+    _fields_ = [
+        ("key", ctypes.c_char_p),
+        ("desc", ctypes.c_char_p),
+        ("info", ctypes.c_char_p),
+        ("values", RetroCoreOptionValue * RETRO_NUM_CORE_OPTION_VALUES_MAX),
+        ("default_value", ctypes.c_char_p),
+    ]
+
+class RetroCoreOptionV2Definition(ctypes.Structure):
+    """retro_core_option_v2_definition (SET_CORE_OPTIONS_V2)."""
+    _fields_ = [
+        ("key", ctypes.c_char_p),
+        ("desc", ctypes.c_char_p),
+        ("desc_categorized", ctypes.c_char_p),
+        ("info", ctypes.c_char_p),
+        ("info_categorized", ctypes.c_char_p),
+        ("category_key", ctypes.c_char_p),
+        ("values", RetroCoreOptionValue * RETRO_NUM_CORE_OPTION_VALUES_MAX),
+        ("default_value", ctypes.c_char_p),
+    ]
+
+class RetroCoreOptionV2Category(ctypes.Structure):
+    _fields_ = [
+        ("key", ctypes.c_char_p),
+        ("desc", ctypes.c_char_p),
+        ("info", ctypes.c_char_p),
+    ]
+
+class RetroCoreOptionsV2(ctypes.Structure):
+    _fields_ = [
+        ("categories", ctypes.POINTER(RetroCoreOptionV2Category)),
+        ("definitions", ctypes.POINTER(RetroCoreOptionV2Definition)),
     ]

@@ -87,6 +87,7 @@ class MainWindow(QMainWindow):
         self.config_page.set_config_path(os.path.join(base, "config.json"))
         self.ui.stackedWidget.addWidget(self.config_page)  # index 1
         self.config_page.volumen_cambiado.connect(self._on_volume_changed)
+        self.config_page.resolucion_cambiada.connect(self._on_resolution_changed)
 
         # Página de juego permanente (se crea una sola vez)
         self.game_page = GameWindow()
@@ -107,6 +108,10 @@ class MainWindow(QMainWindow):
         """Carga el juego seleccionado y cambia a la página de juego."""
         self.ui.header.hide()
         self.ui.stackedWidget.setCurrentWidget(self.game_page)
+        # Aplicar resolución interna antes de cargar el core
+        self.game_page.game_widget.core_options_extra = {
+            'citra_resolution_factor': self.config_page.resolution_value,
+        }
         self.game_page.load_game(juego)
         # Aplicar volumen actual al audio del juego
         if self.game_page.game_widget.audio_mgr:
@@ -143,6 +148,12 @@ class MainWindow(QMainWindow):
         audio_mgr = self.game_page.game_widget.audio_mgr
         if audio_mgr:
             audio_mgr.volume = value / 100.0
+
+    def _on_resolution_changed(self, index):
+        """Aplica la resolución al core activo si hay juego en marcha."""
+        core = self.game_page.game_widget.core
+        if core:
+            core.set_option('citra_resolution_factor', self.config_page.resolution_value)
 
     # ------------------------------------------------------------------
     #  Sidebar helpers

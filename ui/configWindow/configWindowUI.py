@@ -1,6 +1,6 @@
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout,
-    QLabel, QSlider
+    QLabel, QSlider, QComboBox
 )
 from PyQt6.QtCore import Qt
 
@@ -12,6 +12,7 @@ class ConfigWindowUI:
         # --- Declaración de todas las variables de instancia ---
         self.volumeSlider = None
         self.volumeValueLabel = None
+        self.resolutionCombo = None
 
     def setupUi(self, parent):
         parent.setObjectName("configPage")
@@ -19,7 +20,7 @@ class ConfigWindowUI:
         configLayout.setContentsMargins(40, 30, 40, 30)
         configLayout.setSpacing(20)
 
-        # Título de sección
+        # ── Sección Audio ──
         tituloAudio = QLabel("Audio")
         tituloAudio.setObjectName("configSectionTitle")
         configLayout.addWidget(tituloAudio)
@@ -49,4 +50,42 @@ class ConfigWindowUI:
         volumeRow.addWidget(self.volumeValueLabel)
 
         configLayout.addLayout(volumeRow)
+
+        # ── Sección Gráficos ──
+        tituloGraficos = QLabel("Gráficos")
+        tituloGraficos.setObjectName("configSectionTitle")
+        configLayout.addWidget(tituloGraficos)
+
+        # Fila: etiqueta + combo resolución
+        resRow = QHBoxLayout()
+        resRow.setSpacing(15)
+
+        resLabel = QLabel("Resolución interna")
+        resLabel.setObjectName("configLabel")
+        resRow.addWidget(resLabel)
+
+        self.resolutionCombo = QComboBox()
+        self.resolutionCombo.setObjectName("configCombo")
+        self.resolutionCombo.addItems([
+            "1x (Nativa)",
+            "2x",
+            "3x",
+            "4x",
+            "5x",
+            "6x",
+            "7x",
+            "8x",
+            "9x",
+            "10x",
+        ])
+        resRow.addWidget(self.resolutionCombo, 1)
+
+        configLayout.addLayout(resRow)
+
+        # Nota informativa
+        resNote = QLabel("Solo aplica a juegos de 3DS (Citra). Los juegos de DS usan renderizado por software.")
+        resNote.setObjectName("configNote")
+        resNote.setWordWrap(True)
+        configLayout.addWidget(resNote)
+
         configLayout.addStretch()

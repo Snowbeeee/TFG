@@ -147,6 +147,8 @@ class RetroCore:
         self.save_path = None
         self._option_refs = {}
         self.core_options = {}
+        self._variable_updated = False
+        self.available_options = {}  # {key: {desc, values[], default}}
 
         # --- Carga de la librería y configuración ---
         self.lib = ctypes.CDLL(lib_path)
@@ -193,6 +195,12 @@ class RetroCore:
             # Citra - Región del sistema 3DS (Auto para que se aplique el idioma)
             'citra_region_value': 'Auto',
         }
+        self._variable_updated = False
+
+    def set_option(self, key, value):
+        """Establece una opción del core y marca que hubo actualización."""
+        self.core_options[key] = value
+        self._variable_updated = True
 
     def set_target_fbo(self, fbo):
         self.target_fbo = fbo
@@ -664,7 +672,8 @@ class RetroCore:
 
         elif cmd == RETRO_ENVIRONMENT_GET_VARIABLE_UPDATE:
             p_bool = ctypes.cast(data, ctypes.POINTER(ctypes.c_bool))
-            p_bool[0] = False
+            p_bool[0] = self._variable_updated
+            self._variable_updated = False
             return True
 
         elif cmd == RETRO_ENVIRONMENT_GET_LANGUAGE:
@@ -678,10 +687,85 @@ class RetroCore:
             p_uint[0] = 1 # RETRO_HW_CONTEXT_OPENGL
             return True
 
-        elif cmd in [RETRO_ENVIRONMENT_SET_INPUT_DESCRIPTORS, RETRO_ENVIRONMENT_SET_VARIABLES]:
+        elif cmd == RETRO_ENVIRONMENT_GET_CORE_OPTIONS_VERSION:
+            p_uint = ctypes.cast(data, ctypes.POINTER(ctypes.c_uint))
+            p_uint[0] = 2  # Soportamos SET_CORE_OPTIONS_V2
             return True
-        
-        elif cmd in [RETRO_ENVIRONMENT_SET_CORE_OPTIONS, RETRO_ENVIRONMENT_SET_CORE_OPTIONS_V2]:
+
+        elif cmd == RETRO_ENVIRONMENT_SET_INPUT_DESCRIPTORS:
+            return True
+
+        elif cmd == RETRO_ENVIRONMENT_SET_VARIABLES:
+            # Parsear retro_variable[] (key + "desc; val1|val2|...")
+            try:
+                arr = ctypes.cast(data, ctypes.POINTER(RetroVariable))
+                i = 0
+                while arr[i].key:
+                    key = arr[i].key.decode('utf-8')
+                    raw = arr[i].value.decode('utf-8') if arr[i].value else ''
+                    # Formato: "Description; val1|val2|val3"
+                    desc, _, vals_str = raw.partition(';')
+                    vals = [v.strip() for v in vals_str.strip().split('|')] if vals_str.strip() else []
+                    self.available_options[key] = {
+                        'desc': desc.strip(),
+                        'values': vals,
+                        'default': vals[0] if vals else '',
+                    }
+                    i += 1
+                print(f"[ENV] SET_VARIABLES -> {len(self.available_options)} opciones registradas")
+            except Exception as e:
+                print(f"[ENV] SET_VARIABLES error parsing: {e}")
+            return True
+
+        elif cmd == RETRO_ENVIRONMENT_SET_CORE_OPTIONS:
+            # Parsear retro_core_option_definition[]
+            try:
+                arr = ctypes.cast(data, ctypes.POINTER(RetroCoreOptionDefinition))
+                i = 0
+                while arr[i].key:
+                    key = arr[i].key.decode('utf-8')
+                    desc = arr[i].desc.decode('utf-8') if arr[i].desc else ''
+                    default = arr[i].default_value.decode('utf-8') if arr[i].default_value else ''
+                    vals = []
+                    for v in arr[i].values:
+                        if not v.value:
+                            break
+                        vals.append(v.value.decode('utf-8'))
+                    self.available_options[key] = {
+                        'desc': desc,
+                        'values': vals,
+                        'default': default or (vals[0] if vals else ''),
+                    }
+                    i += 1
+                print(f"[ENV] SET_CORE_OPTIONS -> {len(self.available_options)} opciones registradas")
+            except Exception as e:
+                print(f"[ENV] SET_CORE_OPTIONS error parsing: {e}")
+            return True
+
+        elif cmd == RETRO_ENVIRONMENT_SET_CORE_OPTIONS_V2:
+            # Parsear retro_core_options_v2
+            try:
+                opts_v2 = ctypes.cast(data, ctypes.POINTER(RetroCoreOptionsV2)).contents
+                defs = opts_v2.definitions
+                i = 0
+                while defs[i].key:
+                    key = defs[i].key.decode('utf-8')
+                    desc = defs[i].desc.decode('utf-8') if defs[i].desc else ''
+                    default = defs[i].default_value.decode('utf-8') if defs[i].default_value else ''
+                    vals = []
+                    for v in defs[i].values:
+                        if not v.value:
+                            break
+                        vals.append(v.value.decode('utf-8'))
+                    self.available_options[key] = {
+                        'desc': desc,
+                        'values': vals,
+                        'default': default or (vals[0] if vals else ''),
+                    }
+                    i += 1
+                print(f"[ENV] SET_CORE_OPTIONS_V2 -> {len(self.available_options)} opciones registradas")
+            except Exception as e:
+                print(f"[ENV] SET_CORE_OPTIONS_V2 error parsing: {e}")
             return True
 
         return False

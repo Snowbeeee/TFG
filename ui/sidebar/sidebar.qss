@@ -54,7 +54,7 @@ QPushButton#sidebarArrowBtn {
     background: transparent;
     border: none;
     color: #7f8c8d;
-    font-size: 13px;
+    font-size: 19px;
     padding: 10px 4px 10px 12px;
 }
 
