@@ -1,13 +1,15 @@
 import os
 from PyQt6.QtWidgets import (
-    QMainWindow, QWidget, QVBoxLayout, QGridLayout,
+    QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QGridLayout,
     QLabel, QPushButton, QStackedWidget, QScrollArea,
-    QFrame
+    QFrame, QSizePolicy, QMenu
 )
-from PyQt6.QtCore import Qt, QSize
+from PyQt6.QtCore import Qt, QSize, pyqtSignal
 from PyQt6.QtGui import QPixmap
-from ui.editableLabel import EditableLabel
-from ui.header import Header
+from ui.editableLabel.editableLabel import EditableLabel
+from ui.header.header import Header
+from ui.sidebar.sidebarUI import SidebarUI
+from lista import Lista, SIN_LISTA
 
 
 class MainWindowUI:
@@ -20,10 +22,14 @@ class MainWindowUI:
         self.header = None
         self.stackedWidget = None
         self.menuPage = None
+        # Sidebar (widget externo)
+        self.sidebar = None
+        # Grid de cartas (panel derecho)
         self.scrollArea = None
         self.gridContainer = None
         self.gridLayout = None
         self._cartas = []
+        self._filtro_lista = None  # None = mostrar todos
 
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
@@ -35,7 +41,7 @@ class MainWindowUI:
         self.centralwidget.setObjectName("centralwidget")
         MainWindow.setCentralWidget(self.centralwidget)
 
-        # Layout principal
+        # Layout principal vertical
         self.centralLayout = QVBoxLayout(self.centralwidget)
         self.centralLayout.setContentsMargins(0, 0, 0, 0)
         self.centralLayout.setSpacing(0)
@@ -49,28 +55,39 @@ class MainWindowUI:
         self.stackedWidget.setObjectName("stackedWidget")
         self.centralLayout.addWidget(self.stackedWidget)
 
-        # --- Página 0: Biblioteca ---
+        # --- Página 0: Biblioteca (sidebar + grid) ---
         self.menuPage = QWidget()
         self.menuPage.setObjectName("menuPage")
-        menuLayout = QVBoxLayout(self.menuPage)
-        menuLayout.setContentsMargins(30, 20, 30, 30)
-        menuLayout.setSpacing(20)
+        menuLayout = QHBoxLayout(self.menuPage)
+        menuLayout.setContentsMargins(0, 0, 0, 0)
+        menuLayout.setSpacing(0)
 
-        # Scroll area para las cartas
+        # == Barra lateral izquierda ==
+        self.sidebar = SidebarUI()
+        menuLayout.addWidget(self.sidebar)
+
+        # == Panel derecho: grid de cartas ==
+        rightPanel = QWidget()
+        rightPanel.setObjectName("rightPanel")
+        rightLayout = QVBoxLayout(rightPanel)
+        rightLayout.setContentsMargins(30, 20, 30, 30)
+        rightLayout.setSpacing(20)
+
         self.scrollArea = QScrollArea()
         self.scrollArea.setObjectName("scrollArea")
         self.scrollArea.setWidgetResizable(True)
         self.scrollArea.setFrameShape(QFrame.Shape.NoFrame)
-        menuLayout.addWidget(self.scrollArea)
+        rightLayout.addWidget(self.scrollArea)
 
-        # Contenedor con el grid
         self.gridContainer = QWidget()
         self.gridContainer.setObjectName("gridContainer")
         self.gridLayout = QGridLayout(self.gridContainer)
         self.gridLayout.setSpacing(20)
         self.gridLayout.setContentsMargins(10, 10, 10, 10)
-
         self.scrollArea.setWidget(self.gridContainer)
+
+        menuLayout.addWidget(rightPanel)
+
         self.stackedWidget.addWidget(self.menuPage)  # index 0
 
         self.retranslateUi(MainWindow)
@@ -78,11 +95,16 @@ class MainWindowUI:
     def retranslateUi(self, MainWindow):
         MainWindow.setWindowTitle("TFG - Emulador")
 
+    # ------------------------------------------------------------------
+    #  Cartas (panel derecho)
+    # ------------------------------------------------------------------
+
     def crear_carta(self, juego):
         """Crea un widget 'carta' para un juego y lo devuelve junto a su botón Jugar."""
         carta = QFrame()
         carta.setObjectName("gameCard")
         carta.setFixedSize(220, 300)
+        carta.setProperty("nombre_archivo", juego.nombre_archivo)
 
         layout = QVBoxLayout(carta)
         layout.setContentsMargins(10, 10, 10, 10)
@@ -118,23 +140,43 @@ class MainWindowUI:
 
         layout.addStretch()
 
-        # Botón jugar
+        # Fila inferior: botón jugar + menú "⋯"
+        bottom_row = QHBoxLayout()
+        bottom_row.setSpacing(6)
+
         btn_jugar = QPushButton("Jugar")
         btn_jugar.setObjectName("gameCardButton")
-        layout.addWidget(btn_jugar)
+        bottom_row.addWidget(btn_jugar)
 
-        return carta, btn_jugar, nombre_label
+        btn_menu = QPushButton("⋯")
+        btn_menu.setObjectName("gameCardMenuBtn")
+        btn_menu.setFixedWidth(36)
+        btn_menu.setCursor(Qt.CursorShape.PointingHandCursor)
+        bottom_row.addWidget(btn_menu)
+
+        layout.addLayout(bottom_row)
+
+        return carta, btn_jugar, nombre_label, btn_menu
 
     # Ancho fijo de cada carta + spacing del grid
     CARD_WIDTH = 220
     CARD_SPACING = 20
 
-    def poblar_grid(self, juegos):
+    def poblar_grid(self, juegos, filtro_lista=None):
         """Llena el grid con cartas generadas dinámicamente.
+        Si filtro_lista es un nombre de lista, solo muestra esos juegos.
         Devuelve (botones_dict, labels_dict) donde:
           botones_dict = {QPushButton: Juego}
           labels_dict  = {EditableLabel: Juego}
         """
+        self._filtro_lista = filtro_lista
+
+        # Filtrar juegos si hay filtro activo
+        if filtro_lista is not None:
+            juegos_visibles = Lista.obtener_juegos_de_lista(filtro_lista, juegos)
+        else:
+            juegos_visibles = juegos
+
         # Guardar referencias para poder reposicionar al cambiar tamaño
         self._cartas = []
 
@@ -146,23 +188,24 @@ class MainWindowUI:
 
         botones = {}
         labels = {}
-        for juego in juegos:
-            carta, btn, lbl = self.crear_carta(juego)
+        menus = {}
+        for juego in juegos_visibles:
+            carta, btn, lbl, btn_menu = self.crear_carta(juego)
             self._cartas.append(carta)
             botones[btn] = juego
             labels[lbl] = juego
+            menus[btn_menu] = juego
 
         # Posicionar con las columnas que quepan ahora
         self._reflow_grid()
 
-        return botones, labels
+        return botones, labels, menus
 
     def _calcular_columnas(self):
         """Calcula cuántas columnas caben según el ancho del scrollArea."""
         ancho = self.scrollArea.viewport().width()
         if ancho <= 0:
             return 1
-        # Cada carta necesita CARD_WIDTH + CARD_SPACING, pero la última no
         columnas = max(1, (ancho + self.CARD_SPACING) // (self.CARD_WIDTH + self.CARD_SPACING))
         return columnas
 

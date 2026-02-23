@@ -2,7 +2,7 @@ import os
 import json
 from PyQt6.QtWidgets import QWidget
 from PyQt6.QtCore import pyqtSignal
-from ui.configWindowUI import ConfigWindowUI
+from ui.configWindow.configWindowUI import ConfigWindowUI
 
 
 class ConfigWindow(QWidget):

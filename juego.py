@@ -2,6 +2,8 @@ import os
 import json
 import struct
 
+from lista import Lista
+
 try:
     from PIL import Image
     _PIL_DISPONIBLE = True
@@ -201,6 +203,16 @@ class Juego:
     def titulo(self):
         return Juego._nombres_custom.get(self.nombre_archivo, self._titulo_default)
 
+    @property
+    def lista(self):
+        """Devuelve el nombre de la lista a la que pertenece, o None."""
+        return Lista.obtener_lista_de_juego(self.nombre_archivo)
+
+    @lista.setter
+    def lista(self, nombre_lista):
+        """Asigna el juego a una lista (None o SIN_LISTA para quitar)."""
+        Lista.asignar_juego(self.nombre_archivo, nombre_lista)
+
     @titulo.setter
     def titulo(self, nuevo_titulo):
         nuevo_titulo = nuevo_titulo.strip()
@@ -283,6 +295,9 @@ class Juego:
                     except OSError:
                         pass
 
+                # Migrar en las listas
+                Lista.migrar_renombrado(viejo, nuevo)
+
         if cambios:
             _guardar_nombres(Juego._nombres_custom)
 
@@ -294,6 +309,7 @@ class Juego:
         _ICONOS_DIR = os.path.join(ruta_games, "icons")
         os.makedirs(_ICONOS_DIR, exist_ok=True)
         Juego._nombres_custom = _cargar_nombres(ruta_games)
+        Lista.cargar(ruta_games)
 
         juegos = []
         if not os.path.isdir(ruta_games):

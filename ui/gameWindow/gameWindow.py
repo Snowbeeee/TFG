@@ -1,6 +1,6 @@
 from PyQt6.QtWidgets import QWidget, QVBoxLayout
 from PyQt6.QtCore import QTimer, pyqtSignal
-from ui.gameWindowUI import GameWindowUI
+from ui.gameWindow.gameWindowUI import GameWindowUI
 from ui.openGLWidget import OpenGLWidget
 
 

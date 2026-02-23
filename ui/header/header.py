@@ -1,6 +1,6 @@
 from PyQt6.QtWidgets import QFrame
 from PyQt6.QtCore import pyqtSignal
-from ui.headerUI import HeaderUI
+from ui.header.headerUI import HeaderUI
 
 
 class Header(QFrame):

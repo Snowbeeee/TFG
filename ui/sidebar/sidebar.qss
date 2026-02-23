@@ -1,0 +1,96 @@
+/* --- sidebar.qss --- */
+
+QFrame#sidebarPanel {
+    background-color: #1a252f;
+    border-right: 1px solid #4a6278;
+}
+
+QWidget#sidebarTopRow {
+    border-bottom: 1px solid #2c3e50;
+}
+
+QPushButton#sidebarTodosBtn {
+    background: transparent;
+    border: none;
+    color: #ecf0f1;
+    font-size: 15px;
+    font-weight: bold;
+    padding: 12px 16px;
+    text-align: left;
+}
+
+QPushButton#sidebarTodosBtn:hover {
+    background-color: #2c3e50;
+}
+
+QPushButton#sidebarAddBtn {
+    background: transparent;
+    border: none;
+    color: #3498db;
+    font-size: 20px;
+    font-weight: bold;
+    padding: 8px;
+}
+
+QPushButton#sidebarAddBtn:hover {
+    background-color: #2c3e50;
+    color: #5dade2;
+}
+
+QScrollArea#sidebarScroll {
+    background-color: transparent;
+}
+
+QWidget#sidebarContainer {
+    background-color: transparent;
+}
+
+QWidget#sidebarSectionHeaderRow {
+    background: transparent;
+    border-bottom: 1px solid #2c3e50;
+}
+
+QPushButton#sidebarArrowBtn {
+    background: transparent;
+    border: none;
+    color: #7f8c8d;
+    font-size: 13px;
+    padding: 10px 4px 10px 12px;
+}
+
+QPushButton#sidebarArrowBtn:hover {
+    color: #ecf0f1;
+}
+
+QPushButton#sidebarSectionName {
+    background: transparent;
+    border: none;
+    color: #3498db;
+    font-size: 14px;
+    font-weight: bold;
+    padding: 10px 8px;
+    text-align: left;
+}
+
+QPushButton#sidebarSectionName:hover {
+    background-color: #2c3e50;
+    color: #5dade2;
+}
+
+QWidget#sidebarSectionItems {
+    background-color: transparent;
+}
+
+QPushButton#sidebarGameItem {
+    background: transparent;
+    border: none;
+    color: #bdc3c7;
+    font-size: 13px;
+    padding: 5px 24px;
+    text-align: left;
+}
+
+QPushButton#sidebarGameItem:hover {
+    background-color: #2c3e50;
+    color: #ecf0f1;
+}

@@ -1,0 +1,25 @@
+/* --- header.qss --- */
+
+QFrame#headerBar {
+    background-color: #1a252f;
+    border-bottom: 2px solid #3498db;
+}
+
+QPushButton#navLink {
+    background: transparent;
+    border: none;
+    color: #7f8c8d;
+    font-size: 16px;
+    font-weight: bold;
+    padding: 8px 16px;
+    border-bottom: 3px solid transparent;
+}
+
+QPushButton#navLink:hover {
+    color: #bdc3c7;
+}
+
+QPushButton#navLink[active="true"] {
+    color: #ecf0f1;
+    border-bottom: 3px solid #3498db;
+}

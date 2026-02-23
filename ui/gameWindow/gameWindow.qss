@@ -1,0 +1,21 @@
+/* --- gameWindow.qss --- */
+
+/* Widget contenedor del juego */
+QWidget#gameWidget {
+    background-color: #1a1a2e;
+}
+
+/* Botón Salir */
+QPushButton#pushButtonSalir {
+    background-color: #e74c3c;
+    color: #ffffff;
+    font-size: 14px;
+    font-weight: bold;
+    padding: 10px;
+    border-radius: 6px;
+    border: none;
+}
+
+QPushButton#pushButtonSalir:hover {
+    background-color: #c0392b;
+}
