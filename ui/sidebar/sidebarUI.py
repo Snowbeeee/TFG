@@ -87,7 +87,7 @@ class SidebarUI(QFrame):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setObjectName("sidebarPanel")
-        self.setFixedWidth(280)
+        self.setFixedWidth(290)
 
         # --- Variables de instancia ---
         self.btnTodos = None

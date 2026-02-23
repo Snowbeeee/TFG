@@ -24,8 +24,13 @@ class GameWindow(QWidget):
         self.timer = QTimer()
         self.timer.timeout.connect(self.game_widget.update)
 
-        # Conectar botón salir
-        self.ui.pushButtonSalir.clicked.connect(self._salir)
+        # Conectar botón salir de la sidebar
+        self.ui.gameSideBar.salir_clicked.connect(self._salir)
+
+    # Atajo para acceder a la sidebar desde fuera
+    @property
+    def sidebar(self):
+        return self.ui.gameSideBar
 
     def load_game(self, juego):
         """Carga un juego en el OpenGLWidget y arranca el timer."""

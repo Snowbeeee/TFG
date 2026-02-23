@@ -94,6 +94,10 @@ class MainWindow(QMainWindow):
         self.ui.stackedWidget.addWidget(self.game_page)  # index 2
         self.game_page.salir_signal.connect(self._volver_menu)
 
+        # Sincronizar game sidebar → config page
+        self.game_page.sidebar.volumen_cambiado.connect(self._on_game_sidebar_volume)
+        self.game_page.sidebar.resolucion_cambiada.connect(self._on_game_sidebar_graphics)
+
         # Vigilar la carpeta games/ para refrescar la biblioteca automáticamente
         self._ruta_games = ruta_games
         self._ruta_cores = ruta_cores
@@ -117,6 +121,8 @@ class MainWindow(QMainWindow):
     def _jugar(self, juego):
         """Carga el juego seleccionado y cambia a la página de juego."""
         self.ui.header.hide()
+        # Sincronizar config → game sidebar antes de mostrar
+        self._sync_config_to_game_sidebar()
         self.ui.stackedWidget.setCurrentWidget(self.game_page)
         # Aplicar opciones gráficas antes de cargar el core
         self.game_page.game_widget.core_options_extra = self._build_core_options_extra()
@@ -159,6 +165,37 @@ class MainWindow(QMainWindow):
 
     def _on_graphics_changed(self):
         """Aplica las opciones gráficas al core activo si hay juego en marcha."""
+        self._sync_config_to_game_sidebar()
+        core = self.game_page.game_widget.core
+        if core:
+            for key, val in self._build_core_options_extra().items():
+                core.set_option(key, val)
+
+    # ── Sincronización bidireccional config ↔ game sidebar ──
+
+    def _sync_config_to_game_sidebar(self):
+        """Copia los valores de ConfigWindow a la sidebar del juego."""
+        cp = self.config_page
+        self.game_page.sidebar.sync_from_config(
+            cp.volume,
+            cp.ui.dsRendererCombo.currentIndex(),
+            cp.ui.dsResolutionCombo.currentIndex(),
+            cp.ui.citraResolutionCombo.currentIndex(),
+        )
+
+    def _on_game_sidebar_volume(self, value):
+        """La sidebar del juego cambió el volumen → actualizar ConfigWindow y audio."""
+        self.config_page.ui.volumeSlider.setValue(value)
+        audio_mgr = self.game_page.game_widget.audio_mgr
+        if audio_mgr:
+            audio_mgr.volume = value / 100.0
+
+    def _on_game_sidebar_graphics(self):
+        """La sidebar del juego cambió gráficos → actualizar ConfigWindow y core."""
+        sb = self.game_page.sidebar
+        self.config_page.ui.dsRendererCombo.setCurrentIndex(sb.ds_renderer_index)
+        self.config_page.ui.dsResolutionCombo.setCurrentIndex(sb.ds_resolution_index)
+        self.config_page.ui.citraResolutionCombo.setCurrentIndex(sb.citra_resolution_index)
         core = self.game_page.game_widget.core
         if core:
             for key, val in self._build_core_options_extra().items():

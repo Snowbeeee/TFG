@@ -1,0 +1,94 @@
+/* --- gameSideBar.qss --- */
+
+QFrame#gameSideBar {
+    background-color: #1e2a3a;
+    border-right: 1px solid #2c3e50;
+}
+
+QLabel#gameSideBarSectionTitle {
+    color: #3498db;
+    font-size: 16px;
+    font-weight: bold;
+    padding-bottom: 4px;
+    border-bottom: 1px solid #2c3e50;
+}
+
+QLabel#gameSideBarLabel {
+    color: #ecf0f1;
+    font-size: 13px;
+    min-width: 70px;
+}
+
+QLabel#gameSideBarValue {
+    color: #ecf0f1;
+    font-size: 13px;
+    font-weight: bold;
+}
+
+QSlider#gameSideBarSlider::groove:horizontal {
+    background: #4a6278;
+    height: 5px;
+    border-radius: 2px;
+}
+
+QSlider#gameSideBarSlider::handle:horizontal {
+    background: #3498db;
+    width: 14px;
+    height: 14px;
+    margin: -5px 0;
+    border-radius: 7px;
+}
+
+QSlider#gameSideBarSlider::sub-page:horizontal {
+    background: #3498db;
+    border-radius: 2px;
+}
+
+QComboBox#gameSideBarCombo {
+    background-color: #2c3e50;
+    color: #ecf0f1;
+    font-size: 12px;
+    padding: 4px 8px;
+    border: 1px solid #4a6278;
+    border-radius: 4px;
+}
+
+QComboBox#gameSideBarCombo:hover {
+    border-color: #3498db;
+}
+
+QComboBox#gameSideBarCombo::drop-down {
+    border: none;
+    width: 22px;
+}
+
+QComboBox#gameSideBarCombo::down-arrow {
+    image: none;
+    border-left: 4px solid transparent;
+    border-right: 4px solid transparent;
+    border-top: 5px solid #ecf0f1;
+    margin-right: 6px;
+}
+
+QComboBox#gameSideBarCombo QAbstractItemView {
+    background-color: #2c3e50;
+    color: #ecf0f1;
+    selection-background-color: #3498db;
+    selection-color: #ffffff;
+    border: 1px solid #4a6278;
+    outline: none;
+}
+
+QPushButton#gameSideBarSalir {
+    background-color: #e74c3c;
+    color: #ffffff;
+    font-size: 14px;
+    font-weight: bold;
+    padding: 12px;
+    border-radius: 6px;
+    border: none;
+}
+
+QPushButton#gameSideBarSalir:hover {
+    background-color: #c0392b;
+}

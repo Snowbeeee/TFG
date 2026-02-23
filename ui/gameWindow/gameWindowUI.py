@@ -1,17 +1,18 @@
 from PyQt6.QtWidgets import (
-    QWidget, QHBoxLayout, QVBoxLayout, QPushButton
+    QWidget, QHBoxLayout, QVBoxLayout
 )
+from ui.gameSideBar.gameSideBar import GameSideBar
 
 
 class GameWindowUI:
-    """UI de la página de juego: botón salir + placeholder OpenGL."""
+    """UI de la página de juego: sidebar de configuración + zona OpenGL."""
 
     def __init__(self):
         # --- Declaración de todas las variables de instancia ---
         self.layout = None
         self.widget = None
         self.horizontalLayout = None
-        self.pushButtonSalir = None
+        self.gameSideBar = None
         self.openglContainer = None
 
     def setupUi(self, parent):
@@ -19,22 +20,20 @@ class GameWindowUI:
         self.layout = QVBoxLayout(parent)
         self.layout.setContentsMargins(0, 0, 0, 0)
 
-        # Contenedor horizontal: botón + zona de juego
+        # Contenedor horizontal: sidebar + zona de juego
         self.widget = QWidget()
         self.widget.setObjectName("gameWidget")
         self.layout.addWidget(self.widget)
 
         self.horizontalLayout = QHBoxLayout(self.widget)
         self.horizontalLayout.setObjectName("gameHorizontalLayout")
-        self.horizontalLayout.setSpacing(30)
+        self.horizontalLayout.setSpacing(0)
         self.horizontalLayout.setContentsMargins(0, 0, 0, 0)
 
-        # Botón salir del juego
-        self.pushButtonSalir = QPushButton()
-        self.pushButtonSalir.setObjectName("pushButtonSalir")
-        self.pushButtonSalir.setText("Salir del Juego")
-        self.horizontalLayout.addWidget(self.pushButtonSalir, 30)
+        # Sidebar de configuración + botón salir
+        self.gameSideBar = GameSideBar()
+        self.horizontalLayout.addWidget(self.gameSideBar)
 
         # Placeholder (se reemplazará por el OpenGLWidget real)
         self.openglContainer = QWidget()
-        self.horizontalLayout.addWidget(self.openglContainer, 70)
+        self.horizontalLayout.addWidget(self.openglContainer, 1)
