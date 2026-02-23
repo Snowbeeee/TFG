@@ -113,3 +113,72 @@ QPushButton#pushButtonSalir {
 QPushButton#pushButtonSalir:hover {
     background-color: #c0392b;
 }
+
+/* --- Barra de navegación (cabecera) --- */
+QFrame#headerBar {
+    background-color: #1a252f;
+    border-bottom: 2px solid #3498db;
+}
+
+QPushButton#navLink {
+    background: transparent;
+    border: none;
+    color: #7f8c8d;
+    font-size: 16px;
+    font-weight: bold;
+    padding: 8px 16px;
+    border-bottom: 3px solid transparent;
+}
+
+QPushButton#navLink:hover {
+    color: #bdc3c7;
+}
+
+QPushButton#navLink[active="true"] {
+    color: #ecf0f1;
+    border-bottom: 3px solid #3498db;
+}
+
+/* --- Página de configuración --- */
+QWidget#configPage {
+    background-color: #2c3e50;
+}
+
+QLabel#configSectionTitle {
+    color: #3498db;
+    font-size: 22px;
+    font-weight: bold;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #4a6278;
+}
+
+QLabel#configLabel {
+    color: #ecf0f1;
+    font-size: 15px;
+    min-width: 80px;
+}
+
+QLabel#configValueLabel {
+    color: #ecf0f1;
+    font-size: 15px;
+    font-weight: bold;
+}
+
+QSlider#volumeSlider::groove:horizontal {
+    background: #4a6278;
+    height: 6px;
+    border-radius: 3px;
+}
+
+QSlider#volumeSlider::handle:horizontal {
+    background: #3498db;
+    width: 18px;
+    height: 18px;
+    margin: -6px 0;
+    border-radius: 9px;
+}
+
+QSlider#volumeSlider::sub-page:horizontal {
+    background: #3498db;
+    border-radius: 3px;
+}

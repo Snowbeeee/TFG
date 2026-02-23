@@ -7,6 +7,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt, QSize
 from PyQt6.QtGui import QPixmap
 from ui.editableLabel import EditableLabel
+from ui.header import Header
 
 
 class MainWindowUI:
@@ -16,9 +17,9 @@ class MainWindowUI:
         # --- Declaración de todas las variables de instancia ---
         self.centralwidget = None
         self.centralLayout = None
+        self.header = None
         self.stackedWidget = None
         self.menuPage = None
-        self.titleLabel = None
         self.scrollArea = None
         self.gridContainer = None
         self.gridLayout = None
@@ -37,24 +38,23 @@ class MainWindowUI:
         # Layout principal
         self.centralLayout = QVBoxLayout(self.centralwidget)
         self.centralLayout.setContentsMargins(0, 0, 0, 0)
+        self.centralLayout.setSpacing(0)
 
-        # StackedWidget para alternar entre menú y juego
+        # --- Barra de navegación (cabecera) ---
+        self.header = Header()
+        self.centralLayout.addWidget(self.header)
+
+        # StackedWidget para alternar entre páginas
         self.stackedWidget = QStackedWidget()
         self.stackedWidget.setObjectName("stackedWidget")
         self.centralLayout.addWidget(self.stackedWidget)
 
-        # --- Página 0: Menú principal ---
+        # --- Página 0: Biblioteca ---
         self.menuPage = QWidget()
         self.menuPage.setObjectName("menuPage")
         menuLayout = QVBoxLayout(self.menuPage)
-        menuLayout.setContentsMargins(30, 30, 30, 30)
+        menuLayout.setContentsMargins(30, 20, 30, 30)
         menuLayout.setSpacing(20)
-
-        # Título
-        self.titleLabel = QLabel("Biblioteca de Juegos")
-        self.titleLabel.setObjectName("titleLabel")
-        self.titleLabel.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        menuLayout.addWidget(self.titleLabel)
 
         # Scroll area para las cartas
         self.scrollArea = QScrollArea()
@@ -71,7 +71,6 @@ class MainWindowUI:
         self.gridLayout.setContentsMargins(10, 10, 10, 10)
 
         self.scrollArea.setWidget(self.gridContainer)
-
         self.stackedWidget.addWidget(self.menuPage)  # index 0
 
         self.retranslateUi(MainWindow)

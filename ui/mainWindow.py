@@ -3,6 +3,7 @@ from PyQt6.QtWidgets import QMainWindow
 from PyQt6.QtCore import QFileSystemWatcher
 from ui.mainWindowUI import MainWindowUI
 from ui.gameWindow import GameWindow
+from ui.configWindow import ConfigWindow
 from juego import Juego
 
 
@@ -34,6 +35,7 @@ class MainWindow(QMainWindow):
         self.botones_juego = {}
         self.labels_juego = {}
         self.game_page = None
+        self.config_page = None
         self._ruta_games = None
         self._ruta_cores = None
         self._archivos_actuales = set()
@@ -65,9 +67,15 @@ class MainWindow(QMainWindow):
         for lbl, juego in self.labels_juego.items():
             lbl.texto_cambiado.connect(lambda texto, j=juego: self._renombrar_juego(j, texto))
 
+        # Página de configuración
+        self.config_page = ConfigWindow()
+        self.config_page.set_config_path(os.path.join(base, "config.json"))
+        self.ui.stackedWidget.addWidget(self.config_page)  # index 1
+        self.config_page.volumen_cambiado.connect(self._on_volume_changed)
+
         # Página de juego permanente (se crea una sola vez)
         self.game_page = GameWindow()
-        self.ui.stackedWidget.addWidget(self.game_page)  # index 1
+        self.ui.stackedWidget.addWidget(self.game_page)  # index 2
         self.game_page.salir_signal.connect(self._volver_menu)
 
         # Vigilar la carpeta games/ para refrescar la biblioteca automáticamente
@@ -77,10 +85,17 @@ class MainWindow(QMainWindow):
         self._watcher = QFileSystemWatcher([ruta_games], self)
         self._watcher.directoryChanged.connect(self._on_games_folder_changed)
 
+        # Conectar navegación de la cabecera
+        self.ui.header.navegacion.connect(self._navegar)
+
     def _jugar(self, juego):
         """Carga el juego seleccionado y cambia a la página de juego."""
+        self.ui.header.hide()
         self.ui.stackedWidget.setCurrentWidget(self.game_page)
         self.game_page.load_game(juego)
+        # Aplicar volumen actual al audio del juego
+        if self.game_page.game_widget.audio_mgr:
+            self.game_page.game_widget.audio_mgr.volume = self.config_page.volume / 100.0
 
     def _renombrar_juego(self, juego, nuevo_titulo):
         """Guarda el nombre personalizado del juego."""
@@ -100,7 +115,19 @@ class MainWindow(QMainWindow):
 
     def _volver_menu(self):
         """Vuelve al menú (el juego ya fue descargado por GameWindow)."""
+        self.ui.header.show()
+        self.ui.header.set_active(0)
         self.ui.stackedWidget.setCurrentIndex(0)
+
+    def _navegar(self, index):
+        """Cambia entre páginas del stacked widget (0=Biblioteca, 1=Config)."""
+        self.ui.stackedWidget.setCurrentIndex(index)
+
+    def _on_volume_changed(self, value):
+        """Aplica el volumen al audio activo si hay juego en marcha."""
+        audio_mgr = self.game_page.game_widget.audio_mgr
+        if audio_mgr:
+            audio_mgr.volume = value / 100.0
 
     def showEvent(self, event):
         """Reflow inicial cuando la ventana ya tiene su tamaño real."""
