@@ -87,7 +87,7 @@ class MainWindow(QMainWindow):
         self.config_page.set_config_path(os.path.join(base, "config.json"))
         self.ui.stackedWidget.addWidget(self.config_page)  # index 1
         self.config_page.volumen_cambiado.connect(self._on_volume_changed)
-        self.config_page.resolucion_cambiada.connect(self._on_resolution_changed)
+        self.config_page.resolucion_cambiada.connect(self._on_graphics_changed)
 
         # Página de juego permanente (se crea una sola vez)
         self.game_page = GameWindow()
@@ -104,14 +104,22 @@ class MainWindow(QMainWindow):
         # Conectar navegación de la cabecera
         self.ui.header.navegacion.connect(self._navegar)
 
+    def _build_core_options_extra(self):
+        """Construye el dict de opciones gráficas para inyectar al core."""
+        return {
+            # melonDS DS
+            'melonds_render_mode': self.config_page.ds_renderer_value,
+            'melonds_opengl_resolution': self.config_page.ds_resolution_value,
+            # Citra
+            'citra_resolution_factor': self.config_page.citra_resolution_value,
+        }
+
     def _jugar(self, juego):
         """Carga el juego seleccionado y cambia a la página de juego."""
         self.ui.header.hide()
         self.ui.stackedWidget.setCurrentWidget(self.game_page)
-        # Aplicar resolución interna antes de cargar el core
-        self.game_page.game_widget.core_options_extra = {
-            'citra_resolution_factor': self.config_page.resolution_value,
-        }
+        # Aplicar opciones gráficas antes de cargar el core
+        self.game_page.game_widget.core_options_extra = self._build_core_options_extra()
         self.game_page.load_game(juego)
         # Aplicar volumen actual al audio del juego
         if self.game_page.game_widget.audio_mgr:
@@ -149,11 +157,12 @@ class MainWindow(QMainWindow):
         if audio_mgr:
             audio_mgr.volume = value / 100.0
 
-    def _on_resolution_changed(self, index):
-        """Aplica la resolución al core activo si hay juego en marcha."""
+    def _on_graphics_changed(self):
+        """Aplica las opciones gráficas al core activo si hay juego en marcha."""
         core = self.game_page.game_widget.core
         if core:
-            core.set_option('citra_resolution_factor', self.config_page.resolution_value)
+            for key, val in self._build_core_options_extra().items():
+                core.set_option(key, val)
 
     # ------------------------------------------------------------------
     #  Sidebar helpers
