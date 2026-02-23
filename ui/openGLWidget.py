@@ -64,6 +64,9 @@ class OpenGLWidget(QOpenGLWidget):
             print(f"Error: ROM no encontrada en {self.rom_path}")
             return
 
+        # Asegurar contexto GL activo para la inicialización del core
+        self.makeCurrent()
+
         self.audio_mgr = AudioManager()
         self.input_mgr = QtInputManager()
         self.core = RetroCore(self.core_path, self.audio_mgr, self.input_mgr)
@@ -74,10 +77,36 @@ class OpenGLWidget(QOpenGLWidget):
         else:
             print("Fallo al iniciar el juego")
 
+        self.doneCurrent()
+
     def unload_game(self):
         """Descarga el core y el audio, dejando el widget GL vivo."""
         if self.core:
+            # Activar el contexto GL antes de descargar para que los
+            # recursos OpenGL se liberen correctamente.
+            self.makeCurrent()
             self.core.unload()
+            # Restablecer estado OpenGL limpio para el próximo core
+            from OpenGL.GL import (
+                glBindFramebuffer, glBindTexture, glBindRenderbuffer,
+                glUseProgram, glBindVertexArray, glBindBuffer,
+                GL_FRAMEBUFFER, GL_TEXTURE_2D, GL_RENDERBUFFER,
+                GL_ARRAY_BUFFER, GL_ELEMENT_ARRAY_BUFFER,
+            )
+            try:
+                glBindFramebuffer(GL_FRAMEBUFFER, 0)
+                glBindTexture(GL_TEXTURE_2D, 0)
+                glBindRenderbuffer(GL_RENDERBUFFER, 0)
+                glUseProgram(0)
+                glBindBuffer(GL_ARRAY_BUFFER, 0)
+                glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0)
+                try:
+                    glBindVertexArray(0)
+                except Exception:
+                    pass
+            except Exception as e:
+                print(f"Aviso: Error reseteando estado GL: {e}")
+            self.doneCurrent()
             self.core = None
         if self.audio_mgr:
             self.audio_mgr.stop()
@@ -99,8 +128,7 @@ class OpenGLWidget(QOpenGLWidget):
 
     def paintGL(self):
         if self.initialized and self.core and self.core.lib:
-            from OpenGL.GL import glGetIntegerv, GL_DRAW_FRAMEBUFFER_BINDING
-            current_fbo = glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING)
+            current_fbo = self.defaultFramebufferObject()
             self.core.set_target_fbo(current_fbo)
             
             dpr = self.devicePixelRatio()

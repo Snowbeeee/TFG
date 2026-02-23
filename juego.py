@@ -227,6 +227,66 @@ class Juego:
         return None
 
     @staticmethod
+    def obtener_archivos_rom(ruta_games):
+        """Devuelve el conjunto de nombres de archivo ROM en la carpeta."""
+        archivos = set()
+        if os.path.isdir(ruta_games):
+            for archivo in os.listdir(ruta_games):
+                ext = os.path.splitext(archivo)[1].lower()
+                if ext in EXTENSIONES_VALIDAS:
+                    archivos.add(archivo)
+        return archivos
+
+    @staticmethod
+    def migrar_renombrados(ruta_games, archivos_antes, archivos_despues):
+        """Detecta archivos renombrados y migra nombres custom e iconos."""
+        eliminados = archivos_antes - archivos_despues
+        nuevos = archivos_despues - archivos_antes
+
+        if not eliminados or not nuevos:
+            return
+
+        # Agrupar por extensión para emparejar renombrados
+        elim_por_ext = {}
+        for f in eliminados:
+            ext = os.path.splitext(f)[1].lower()
+            elim_por_ext.setdefault(ext, []).append(f)
+
+        nuevo_por_ext = {}
+        for f in nuevos:
+            ext = os.path.splitext(f)[1].lower()
+            nuevo_por_ext.setdefault(ext, []).append(f)
+
+        iconos_dir = os.path.join(ruta_games, "icons")
+        cambios = False
+
+        for ext, lista_elim in elim_por_ext.items():
+            lista_nuevo = nuevo_por_ext.get(ext, [])
+            # Solo migrar si hay exactamente un eliminado y un nuevo con la misma extensión
+            if len(lista_elim) == 1 and len(lista_nuevo) == 1:
+                viejo = lista_elim[0]
+                nuevo = lista_nuevo[0]
+
+                # Migrar nombre custom
+                if viejo in Juego._nombres_custom:
+                    Juego._nombres_custom[nuevo] = Juego._nombres_custom.pop(viejo)
+                    cambios = True
+
+                # Migrar icono
+                viejo_png = os.path.splitext(viejo)[0] + ".png"
+                nuevo_png = os.path.splitext(nuevo)[0] + ".png"
+                viejo_icon = os.path.join(iconos_dir, viejo_png)
+                nuevo_icon = os.path.join(iconos_dir, nuevo_png)
+                if os.path.exists(viejo_icon):
+                    try:
+                        os.rename(viejo_icon, nuevo_icon)
+                    except OSError:
+                        pass
+
+        if cambios:
+            _guardar_nombres(Juego._nombres_custom)
+
+    @staticmethod
     def escanear_juegos(ruta_games, ruta_cores):
         """Escanea la carpeta games/ y devuelve una lista de objetos Juego."""
         global _NOMBRES_PATH, _ICONOS_DIR

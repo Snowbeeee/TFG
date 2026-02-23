@@ -12,6 +12,18 @@ from ui.editableLabel import EditableLabel
 class MainWindowUI:
     """UI principal: contiene un QStackedWidget para navegar entre páginas."""
 
+    def __init__(self):
+        # --- Declaración de todas las variables de instancia ---
+        self.centralwidget = None
+        self.centralLayout = None
+        self.stackedWidget = None
+        self.menuPage = None
+        self.titleLabel = None
+        self.scrollArea = None
+        self.gridContainer = None
+        self.gridLayout = None
+        self._cartas = []
+
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
         MainWindow.setWindowTitle("TFG - Emulador")
@@ -157,7 +169,7 @@ class MainWindowUI:
 
     def _reflow_grid(self):
         """Reposiciona todas las cartas en el grid según las columnas actuales."""
-        if not hasattr(self, '_cartas'):
+        if not self._cartas:
             return
 
         columnas = self._calcular_columnas()

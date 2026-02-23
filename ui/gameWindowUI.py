@@ -6,6 +6,14 @@ from PyQt6.QtWidgets import (
 class GameWindowUI:
     """UI de la página de juego: botón salir + placeholder OpenGL."""
 
+    def __init__(self):
+        # --- Declaración de todas las variables de instancia ---
+        self.layout = None
+        self.widget = None
+        self.horizontalLayout = None
+        self.pushButtonSalir = None
+        self.openglContainer = None
+
     def setupUi(self, parent):
         # Layout principal vertical (ocupa todo el espacio asignado)
         self.layout = QVBoxLayout(parent)

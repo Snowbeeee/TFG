@@ -114,14 +114,42 @@ class RetroCore:
     def __init__(self, lib_path, audio_manager, input_manager):
         global _current_core
         _current_core = self
-        
+
+        # --- Declaración de todas las variables de instancia ---
         self.lib_path = lib_path
         self.audio_manager = audio_manager
         self.input_manager = input_manager
-        self.lib = ctypes.CDLL(lib_path)
-        
+        self.lib = None
         self.context_reset_cb = None
-        self._hw_refs = [] # Para evitar GC
+        self._hw_refs = []
+        self.video_cb = None
+        self.env_cb = None
+        self.audio_sample_cb = None
+        self.audio_batch_cb = None
+        self.input_poll_cb = None
+        self.input_state_cb = None
+        self.log_cb = None
+        self.aspect_ratio = 0.0
+        self.base_width = 0
+        self.base_height = 0
+        self.fbo_id = 0
+        self.tex_id = 0
+        self.rbo_id = 0
+        self.view_rect = (0, 0, 1, 1)
+        self.hw_render_depth = False
+        self.hw_render_stencil = False
+        self.bottom_left_origin = True
+        self.last_win_size = (-1, -1)
+        self.pixel_format = RETRO_PIXEL_FORMAT_0RGB1555
+        self.fbo_width = 0
+        self.fbo_height = 0
+        self.target_fbo = None
+        self.save_path = None
+        self._option_refs = {}
+        self.core_options = {}
+
+        # --- Carga de la librería y configuración ---
+        self.lib = ctypes.CDLL(lib_path)
         
         print("Registrando input callbacks")
         
@@ -152,22 +180,6 @@ class RetroCore:
 
         self.lib.retro_get_memory_size.restype = ctypes.c_size_t
         self.lib.retro_get_memory_size.argtypes = [ctypes.c_uint]
-        
-        self.aspect_ratio = 0.0
-        self.base_width = 0
-        self.base_height = 0
-        self.fbo_id = 0
-        self.tex_id = 0
-        self.rbo_id = 0
-        self.view_rect = (0,0,1,1)
-        self.hw_render_depth = False
-        self.hw_render_stencil = False
-        self.bottom_left_origin = True # Default GL
-        self.last_win_size = (-1, -1)
-        self.pixel_format = RETRO_PIXEL_FORMAT_0RGB1555 # Default
-        self.fbo_width = 0
-        self.fbo_height = 0
-        self.target_fbo = None # None means auto-detect via glGetIntegerv
 
         # Diccionario de opciones del core (variables).
         # Aquí se definen los valores que el frontend devuelve al core cuando este solicita
@@ -389,12 +401,58 @@ class RetroCore:
     def unload(self):
         if not self.lib:
             return
+
+        global _current_core
+
         # Guardar partida antes de descargar
         self.save_sram()
-        
+
         self.lib.retro_unload_game()
         self.lib.retro_deinit()
+
+        # Liberar recursos OpenGL (FBO, textura, RBO)
+        # El contexto GL debe estar activo (makeCurrent) antes de llamar a esto.
+        try:
+            if self.fbo_id:
+                glDeleteFramebuffers(1, [self.fbo_id])
+                self.fbo_id = 0
+            if self.tex_id:
+                glDeleteTextures(1, [self.tex_id])
+                self.tex_id = 0
+            if self.rbo_id:
+                glDeleteRenderbuffers(1, [self.rbo_id])
+                self.rbo_id = 0
+        except Exception as e:
+            print(f"Aviso: Error liberando recursos GL: {e}")
+
+        # Descargar la DLL del proceso para evitar conflictos entre cores.
+        # FreeLibrary se llama en bucle porque ctypes.CDLL y el propio core
+        # pueden haber incrementado el refcount de LoadLibrary más de una vez.
+        try:
+            handle = self.lib._handle
+            del self.lib
+            if os.name == 'nt':
+                kernel32 = ctypes.windll.kernel32
+                for _ in range(10):
+                    if not kernel32.FreeLibrary(ctypes.c_void_p(handle)):
+                        break
+            else:
+                import _ctypes
+                _ctypes.dlclose(handle)
+        except Exception as e:
+            print(f"Aviso: No se pudo descargar la DLL: {e}")
+
         self.lib = None
+        self.context_reset_cb = None
+        self._hw_refs.clear()
+        self._option_refs.clear()
+        self.fbo_width = 0
+        self.fbo_height = 0
+        self.last_win_size = (-1, -1)
+
+        # Limpiar referencia global
+        if _current_core is self:
+            _current_core = None
 
     # Implementación de callbacks
     # Callback llamado por el núcleo cuando hay un nuevo frame de video listo para mostrar.
@@ -566,8 +624,6 @@ class RetroCore:
                 val = self.core_options[key].encode('utf-8')
                 # Mantener referencia para evitar que el GC libere la memoria
                 # antes de que el core la lea.
-                if not hasattr(self, '_option_refs'):
-                    self._option_refs = {}
                 self._option_refs[key] = ctypes.c_char_p(val)
                 var.value = self._option_refs[key]
                 return True
