@@ -16,11 +16,13 @@ class GameWindow(QWidget):
         self._juego_actual = None   # juego que se está ejecutando ahora mismo
         self._pending_state = None  # savestate en memoria para restaurar tras reload
 
-        # OpenGLWidget permanente (sin juego cargado aún)
+        # Layout del contenedor (vacío hasta que se carga el primer juego)
+        self._container_layout = QVBoxLayout(self.ui.openglContainer)
+        self._container_layout.setContentsMargins(0, 0, 0, 0)
+
+        # OpenGLWidget inicial
         self.game_widget = OpenGLWidget(self.ui.openglContainer)
-        container_layout = QVBoxLayout(self.ui.openglContainer)
-        container_layout.setContentsMargins(0, 0, 0, 0)
-        container_layout.addWidget(self.game_widget)
+        self._container_layout.addWidget(self.game_widget)
 
         # Timer permanente (parado)
         self.timer = QTimer()
@@ -28,6 +30,22 @@ class GameWindow(QWidget):
 
         # Conectar botón salir de la sidebar
         self.ui.gameSideBar.salir_clicked.connect(self._salir)
+
+    def _recreate_game_widget(self):
+        """Destruye el OpenGLWidget actual y crea uno nuevo con contexto GL limpio.
+
+        Citra libretro deja objetos GL huérfanos (shaders, VAOs, texturas de caché)
+        que no libera en retro_deinit(). Recrear el widget fuerza a Qt a destruir el
+        contexto OpenGL antiguo y crear uno completamente limpio para el siguiente juego.
+        """
+        old = self.game_widget
+        old.unload_game()                         # libera lo que puede
+        self._container_layout.removeWidget(old)
+        old.hide()
+        old.deleteLater()                         # Qt destruye el contexto GL al procesar el evento
+
+        self.game_widget = OpenGLWidget(self.ui.openglContainer)
+        self._container_layout.addWidget(self.game_widget)
 
     def _on_frame(self):
         """Tick del timer: primero restaura savestate pendiente si lo hay, luego repinta."""
@@ -53,7 +71,9 @@ class GameWindow(QWidget):
         return self._juego_actual
 
     def load_game(self, juego):
-        """Carga un juego en el OpenGLWidget y arranca el timer."""
+        """Carga un juego: recrea el contexto GL y arranca el timer."""
+        self.timer.stop()
+        self._recreate_game_widget()              # contexto GL limpio para cada juego
         self._juego_actual = juego
         self.ui.gameSideBar.set_consola(juego.extension)
         self.game_widget.load_game(juego.ruta_core, juego.ruta_juego)
@@ -76,7 +96,9 @@ class GameWindow(QWidget):
             if state_data is None:
                 print("[Reload] Savestate no disponible; se perderá el estado en RAM")
 
-        # 2. Recargar con las nuevas opciones (load_game llama a unload internamente)
+        # 2. Recargar con contexto GL limpio y las nuevas opciones
+        self.timer.stop()
+        self._recreate_game_widget()
         self.game_widget.core_options_extra = core_options_extra
         self.game_widget.load_game(juego.ruta_core, juego.ruta_juego)
         self.game_widget.setFocus()
