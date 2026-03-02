@@ -49,6 +49,13 @@ class GameSideBar(QFrame):
         self._actualizar_visibilidad_ds_res()
         self._syncing = False
 
+    def set_consola(self, extension):
+        """Muestra solo la sección de gráficos relevante para la consola en juego."""
+        es_ds = extension == ".nds"
+        es_3ds = extension == ".3ds"
+        self.ui.dsSectionWidget.setVisible(es_ds)
+        self.ui.citraSectionWidget.setVisible(es_3ds)
+
     # ── Lectores (para que MainWindow lea los valores actuales) ──
 
     @property

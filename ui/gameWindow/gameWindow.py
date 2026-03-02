@@ -55,6 +55,7 @@ class GameWindow(QWidget):
     def load_game(self, juego):
         """Carga un juego en el OpenGLWidget y arranca el timer."""
         self._juego_actual = juego
+        self.ui.gameSideBar.set_consola(juego.extension)
         self.game_widget.load_game(juego.ruta_core, juego.ruta_juego)
         self.game_widget.setFocus()
         if not self.timer.isActive():

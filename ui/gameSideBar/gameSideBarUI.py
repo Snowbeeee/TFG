@@ -21,6 +21,8 @@ class GameSideBarUI(QFrame):
         self.dsResolutionRow = None
         self.citraResolutionCombo = None
         self.pushButtonSalir = None
+        self.dsSectionWidget = None    # contenedor de toda la sección DS
+        self.citraSectionWidget = None  # contenedor de toda la sección 3DS
 
         self._setup_ui()
 
@@ -60,9 +62,14 @@ class GameSideBarUI(QFrame):
         layout.addLayout(volumeRow)
 
         # ── Sección Gráficos – DS ──
-        tituloDS = QLabel("Gráficos – DS")
+        self.dsSectionWidget = QWidget()
+        dsSectionLayout = QVBoxLayout(self.dsSectionWidget)
+        dsSectionLayout.setContentsMargins(0, 0, 0, 0)
+        dsSectionLayout.setSpacing(8)
+
+        tituloDS = QLabel("Gráficos \u2013 DS")
         tituloDS.setObjectName("gameSideBarSectionTitle")
-        layout.addWidget(tituloDS)
+        dsSectionLayout.addWidget(tituloDS)
 
         rendererRow = QHBoxLayout()
         rendererRow.setSpacing(10)
@@ -74,33 +81,40 @@ class GameSideBarUI(QFrame):
         self.dsRendererCombo.setObjectName("gameSideBarCombo")
         self.dsRendererCombo.addItems(["Software", "OpenGL"])
         rendererRow.addWidget(self.dsRendererCombo, 1)
-        layout.addLayout(rendererRow)
+        dsSectionLayout.addLayout(rendererRow)
 
         self.dsResolutionRow = QWidget()
         dsResLayout = QHBoxLayout(self.dsResolutionRow)
         dsResLayout.setContentsMargins(0, 0, 0, 0)
         dsResLayout.setSpacing(10)
-        dsResLabel = QLabel("Resolución")
+        dsResLabel = QLabel("Resoluci\u00f3n")
         dsResLabel.setObjectName("gameSideBarLabel")
         dsResLayout.addWidget(dsResLabel)
 
         self.dsResolutionCombo = QComboBox()
         self.dsResolutionCombo.setObjectName("gameSideBarCombo")
         self.dsResolutionCombo.addItems([
-            "1x (256×192)", "2x (512×384)", "3x (768×576)", "4x (1024×768)",
-            "5x (1280×960)", "6x (1536×1152)", "7x (1792×1344)", "8x (2048×1536)",
+            "1x (256\u00d7192)", "2x (512\u00d7384)", "3x (768\u00d7576)", "4x (1024\u00d7768)",
+            "5x (1280\u00d7960)", "6x (1536\u00d71152)", "7x (1792\u00d71344)", "8x (2048\u00d71536)",
         ])
         dsResLayout.addWidget(self.dsResolutionCombo, 1)
-        layout.addWidget(self.dsResolutionRow)
+        dsSectionLayout.addWidget(self.dsResolutionRow)
+
+        layout.addWidget(self.dsSectionWidget)
 
         # ── Sección Gráficos – 3DS ──
-        titulo3DS = QLabel("Gráficos – 3DS")
+        self.citraSectionWidget = QWidget()
+        citraSectionLayout = QVBoxLayout(self.citraSectionWidget)
+        citraSectionLayout.setContentsMargins(0, 0, 0, 0)
+        citraSectionLayout.setSpacing(8)
+
+        titulo3DS = QLabel("Gr\u00e1ficos \u2013 3DS")
         titulo3DS.setObjectName("gameSideBarSectionTitle")
-        layout.addWidget(titulo3DS)
+        citraSectionLayout.addWidget(titulo3DS)
 
         citraResRow = QHBoxLayout()
         citraResRow.setSpacing(10)
-        citraResLabel = QLabel("Resolución")
+        citraResLabel = QLabel("Resoluci\u00f3n")
         citraResLabel.setObjectName("gameSideBarLabel")
         citraResRow.addWidget(citraResLabel)
 
@@ -111,7 +125,9 @@ class GameSideBarUI(QFrame):
             "6x", "7x", "8x", "9x", "10x",
         ])
         citraResRow.addWidget(self.citraResolutionCombo, 1)
-        layout.addLayout(citraResRow)
+        citraSectionLayout.addLayout(citraResRow)
+
+        layout.addWidget(self.citraSectionWidget)
 
         # ── Espacio flexible ──
         layout.addStretch()
