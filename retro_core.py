@@ -709,9 +709,16 @@ class RetroCore:
             return True
 
         elif cmd == RETRO_ENVIRONMENT_GET_SAVE_DIRECTORY:
-            save_dir = os.path.abspath("./saves").encode('utf-8')
-            if not os.path.exists("./saves"):
-                os.makedirs("./saves")
+            # Citra almacena en el directorio de saves toda su estructura de usuario
+            # (NAND, shaders, config binario, sdmc...). La redirigimos a system/ para
+            # separar datos del sistema de los saves reales de los juegos DS.
+            if 'citra' in self.lib_path.lower():
+                target_dir = os.path.abspath("./system")
+            else:
+                target_dir = os.path.abspath("./saves")
+            if not os.path.exists(target_dir):
+                os.makedirs(target_dir)
+            save_dir = target_dir.encode('utf-8')
             p_str = ctypes.cast(data, ctypes.POINTER(ctypes.c_char_p))
             p_str[0] = save_dir
             return True

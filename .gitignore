@@ -3,6 +3,9 @@ games/
 .vscode/
 .idea/
 /system/melonDS DS/
+/system/Citra/sdmc/
+/system/Citra/shaders/
+/system/Citra/sysdata/
 /build.bat
 /config.json
 
