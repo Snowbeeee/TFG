@@ -154,7 +154,21 @@ class RetroCore:
 
         # --- Carga de la librería y configuración ---
         self.lib = ctypes.CDLL(lib_path)
-        
+
+        # Diccionario de opciones del core (variables).
+        # IMPORTANTE: debe estar poblado ANTES de retro_init() para que cuando
+        # el core llame GET_VARIABLE durante su inicialización (ej: Citra al crear
+        # el config del firmware) ya reciba los valores correctos de idioma/región.
+        self.core_options = {
+            # melonDS DS - Idioma del firmware
+            'melonds_firmware_language': 'es',
+            # Citra - Idioma del sistema 3DS
+            'citra_language': 'Spanish',
+            # Citra - Región del sistema 3DS (Auto para que se aplique el idioma)
+            'citra_region_value': 'Auto',
+        }
+        self._variable_updated = False
+
         print("Registrando input callbacks")
         
         # Instanciar callbacks
@@ -184,20 +198,6 @@ class RetroCore:
 
         self.lib.retro_get_memory_size.restype = ctypes.c_size_t
         self.lib.retro_get_memory_size.argtypes = [ctypes.c_uint]
-
-        # Diccionario de opciones del core (variables).
-        # Aquí se definen los valores que el frontend devuelve al core cuando este solicita
-        # una variable mediante RETRO_ENVIRONMENT_GET_VARIABLE.
-        # Se usa para forzar configuraciones como el idioma en español.
-        self.core_options = {
-            # melonDS DS - Idioma del firmware
-            'melonds_firmware_language': 'es',
-            # Citra - Idioma del sistema 3DS
-            'citra_language': 'Spanish',
-            # Citra - Región del sistema 3DS (Auto para que se aplique el idioma)
-            'citra_region_value': 'Auto',
-        }
-        self._variable_updated = False
 
     def set_option(self, key, value):
         """Establece una opción del core y marca que hubo actualización."""
@@ -345,12 +345,8 @@ class RetroCore:
         # Re-set controller port
         self.lib.retro_set_controller_port_device(0, RETRO_DEVICE_JOYPAD)
         
-        if self.context_reset_cb:
-            # Llamar context_reset_cb solo en la carga inicial.
-            # En runtime (cambio SW→OGL durante retro_run) el core lo llama él mismo.
-            self.context_reset_cb()
-            
-        # AV Info
+        # AV Info — obtener ANTES de context_reset para que el FBO se cree
+        # al tamaño correcto antes de que el core intente usarlo.
         self.lib.retro_get_system_av_info.argtypes = [ctypes.POINTER(RetroSystemAVInfo)]
         av_info = RetroSystemAVInfo()
         self.lib.retro_get_system_av_info(ctypes.byref(av_info))
@@ -364,8 +360,33 @@ class RetroCore:
         self._current_sample_rate = int(av_info.timing.sample_rate)
         self.audio_manager.init_stream(self._current_sample_rate)
         
-        # Inicializar FBO
-        self.init_framebuffer(self.base_width, self.base_height)
+        # Crear el FBO solo si aún no existe.
+        # SET_SYSTEM_AV_INFO (llamado desde retro_load_game) puede haberlo creado
+        # ya al tamaño correcto (p.ej. upscaled 512×768 para DS 2x).
+        # Si se recrea aquí forzando las dimensiones base, el core renderiza fuera
+        # del FBO demasiado pequeño y la imagen aparece cortada.
+        if self.fbo_id == 0:
+            self.init_framebuffer(self.base_width, self.base_height)
+        print(f"[FBO] Usando FBO id={self.fbo_id} {self.fbo_width}x{self.fbo_height} "
+              f"(base {self.base_width}x{self.base_height})")
+        
+        if self.context_reset_cb:
+            # Preparar el estado GL antes de que el core inicialice su renderer:
+            # - Viewport exactamente al tamaño del FBO, para que el core vea el
+            #   área de render correcta (Citra puede haber dejado otro viewport).
+            # - FBO propio vinculado como destino (el core lo leerá con get_current_framebuffer).
+            glBindFramebuffer(GL_FRAMEBUFFER, self.fbo_id)
+            glViewport(0, 0, self.fbo_width, self.fbo_height)
+            glDisable(GL_SCISSOR_TEST)
+            glDisable(GL_DEPTH_TEST)
+            glDisable(GL_BLEND)
+            glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE)
+            glDepthMask(GL_TRUE)
+            glClearColor(0, 0, 0, 1)
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
+            glBindFramebuffer(GL_FRAMEBUFFER, 0)
+            print(f"[FBO] Llamando context_reset_cb (fbo_id={self.fbo_id} {self.fbo_width}x{self.fbo_height})")
+            self.context_reset_cb()
         
         # Cargar partida salvada si existe
         self.load_sram()
@@ -512,6 +533,8 @@ class RetroCore:
         self.last_win_size = (-1, -1)
         self._pending_sample_rate = 0
         self._current_sample_rate = 0
+        if hasattr(self, '_blit_logged'):
+            del self._blit_logged
 
         # Limpiar referencia global
         if _current_core is self:
@@ -634,15 +657,34 @@ class RetroCore:
         # Por lo tanto, debemos invertirlo.
         must_flip_y = is_software or (not self.bottom_left_origin)
 
+        # Para HW rendering: usar las dimensiones reales del FBO como fuente del blit.
+        # El core puede reportar en video_refresh las dimensiones BASE (sin upscale)
+        # aunque haya renderizado a un FBO upscaled → usar fbo_width/fbo_height evita
+        # que el blit lea solo una fracción del FBO y muestre la imagen cortada.
+        # Para SW rendering: width/height del callback corresponden exactamente a los
+        # píxeles subidos a la textura → se usan directamente.
+        if not is_software and self.fbo_width > 0 and self.fbo_height > 0:
+            blit_w = self.fbo_width
+            blit_h = self.fbo_height
+        else:
+            blit_w = width
+            blit_h = height
+
+        # Log solo en el primer frame para diagnóstico
+        if self.fbo_id and not hasattr(self, '_blit_logged'):
+            self._blit_logged = True
+            print(f"[BLIT] is_sw={is_software} callback=({width}x{height}) "
+                  f"fbo=({self.fbo_width}x{self.fbo_height}) "
+                  f"src=({blit_w}x{blit_h}) dst={self.view_rect}")
+
         src_y0 = 0
-        src_y1 = height # Usamos height del frame actual para mapear correctamente la textura
+        src_y1 = blit_h
         
         if must_flip_y:
-             src_y0 = height
+             src_y0 = blit_h
              src_y1 = 0
         
-        # Usamos 'width' del frame actual como ancho fuente
-        glBlitFramebuffer(0, src_y0, width, src_y1, 
+        glBlitFramebuffer(0, src_y0, blit_w, src_y1, 
                           dst_x, dst_y, dst_x + dst_w, dst_y + dst_h, 
                           GL_COLOR_BUFFER_BIT, GL_LINEAR)
         

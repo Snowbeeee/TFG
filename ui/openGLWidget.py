@@ -98,16 +98,53 @@ class OpenGLWidget(QOpenGLWidget):
                 GL_ARRAY_BUFFER, GL_ELEMENT_ARRAY_BUFFER,
             )
             try:
+                from OpenGL.GL import (
+                    glBindFramebuffer, glBindTexture, glBindRenderbuffer,
+                    glUseProgram, glBindVertexArray, glBindBuffer,
+                    glActiveTexture, glViewport, glDisable, glColorMask,
+                    glDepthMask, glScissor, glDepthFunc, glBlendFunc,
+                    GL_FRAMEBUFFER, GL_TEXTURE_2D, GL_RENDERBUFFER,
+                    GL_ARRAY_BUFFER, GL_ELEMENT_ARRAY_BUFFER,
+                    GL_UNIFORM_BUFFER, GL_TEXTURE0, GL_TEXTURE1, GL_TEXTURE2,
+                    GL_TEXTURE3, GL_TEXTURE4, GL_TEXTURE5, GL_TEXTURE6, GL_TEXTURE7,
+                    GL_DEPTH_TEST, GL_BLEND, GL_SCISSOR_TEST, GL_STENCIL_TEST,
+                    GL_CULL_FACE, GL_TRUE, GL_FALSE, GL_LESS, GL_SRC_ALPHA,
+                    GL_ONE_MINUS_SRC_ALPHA,
+                )
                 glBindFramebuffer(GL_FRAMEBUFFER, 0)
-                glBindTexture(GL_TEXTURE_2D, 0)
-                glBindRenderbuffer(GL_RENDERBUFFER, 0)
                 glUseProgram(0)
-                glBindBuffer(GL_ARRAY_BUFFER, 0)
-                glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0)
                 try:
                     glBindVertexArray(0)
                 except Exception:
                     pass
+                glBindBuffer(GL_ARRAY_BUFFER, 0)
+                glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0)
+                try:
+                    glBindBuffer(GL_UNIFORM_BUFFER, 0)
+                except Exception:
+                    pass
+                # Desvincular texturas en todas las unidades que Citra pueda haber usado
+                for unit in (GL_TEXTURE0, GL_TEXTURE1, GL_TEXTURE2, GL_TEXTURE3,
+                             GL_TEXTURE4, GL_TEXTURE5, GL_TEXTURE6, GL_TEXTURE7):
+                    glActiveTexture(unit)
+                    glBindTexture(GL_TEXTURE_2D, 0)
+                glActiveTexture(GL_TEXTURE0)
+                glBindRenderbuffer(GL_RENDERBUFFER, 0)
+                # Restablecer estado GL al por defecto para que el siguiente core
+                # parta de un contexto limpio (Citra deja depth/blend/scissor activos)
+                glDisable(GL_DEPTH_TEST)
+                glDisable(GL_BLEND)
+                glDisable(GL_SCISSOR_TEST)
+                glDisable(GL_STENCIL_TEST)
+                glDisable(GL_CULL_FACE)
+                glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE)
+                glDepthMask(GL_TRUE)
+                glDepthFunc(GL_LESS)
+                glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+                # Viewport al tamaño del widget para que el próximo core empiece limpio
+                w = max(1, self.width())
+                h = max(1, self.height())
+                glViewport(0, 0, w, h)
             except Exception as e:
                 print(f"Aviso: Error reseteando estado GL: {e}")
             self.doneCurrent()
