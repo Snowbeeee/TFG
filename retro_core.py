@@ -149,6 +149,8 @@ class RetroCore:
         self.core_options = {}
         self._variable_updated = False
         self.available_options = {}  # {key: {desc, values[], default}}
+        self._pending_sample_rate = 0         # sample rate pendiente de aplicar (SET_SYSTEM_AV_INFO)
+        self._current_sample_rate = 0         # sample rate actualmente inicializado
 
         # --- Carga de la librería y configuración ---
         self.lib = ctypes.CDLL(lib_path)
@@ -344,6 +346,8 @@ class RetroCore:
         self.lib.retro_set_controller_port_device(0, RETRO_DEVICE_JOYPAD)
         
         if self.context_reset_cb:
+            # Llamar context_reset_cb solo en la carga inicial.
+            # En runtime (cambio SW→OGL durante retro_run) el core lo llama él mismo.
             self.context_reset_cb()
             
         # AV Info
@@ -357,7 +361,8 @@ class RetroCore:
 
         # Configurar InputManager y Audio
         self.input_manager.update_geometry(self.base_width, self.base_height, self.aspect_ratio)
-        self.audio_manager.init_stream(int(av_info.timing.sample_rate))
+        self._current_sample_rate = int(av_info.timing.sample_rate)
+        self.audio_manager.init_stream(self._current_sample_rate)
         
         # Inicializar FBO
         self.init_framebuffer(self.base_width, self.base_height)
@@ -403,7 +408,55 @@ class RetroCore:
     # Ejecuta un ciclo (frame) del núcleo emulado.
     # Llama a la función principal retro_run() de la librería.
     def run(self):
+        # Aplicar sample rate pendiente (diferido desde SET_SYSTEM_AV_INFO para no
+        # reinicializar audio desde dentro de un callback de C).
+        if self._pending_sample_rate:
+            sr = self._pending_sample_rate
+            self._pending_sample_rate = 0
+            self._current_sample_rate = sr
+            self.audio_manager.init_stream(sr)
         self.lib.retro_run()
+
+    # Serializa el estado completo del juego (savestate) a un buffer en memoria.
+    # Devuelve bytes con el estado, o None si falla o no está soportado.
+    def save_state(self):
+        try:
+            self.lib.retro_serialize_size.restype = ctypes.c_size_t
+            size = self.lib.retro_serialize_size()
+            if size == 0:
+                print("[Savestate] retro_serialize_size devolvió 0, no soportado")
+                return None
+            buf = ctypes.create_string_buffer(size)
+            self.lib.retro_serialize.argtypes = [ctypes.c_void_p, ctypes.c_size_t]
+            self.lib.retro_serialize.restype = ctypes.c_bool
+            ok = self.lib.retro_serialize(buf, size)
+            if ok:
+                print(f"[Savestate] Estado guardado ({size} bytes)")
+                return bytes(buf)
+            else:
+                print("[Savestate] retro_serialize falló")
+                return None
+        except Exception as e:
+            print(f"[Savestate] Error al serializar: {e}")
+            return None
+
+    # Restaura el estado del juego desde un buffer previamente guardado con save_state().
+    def load_state(self, data):
+        if not data:
+            return False
+        try:
+            buf = ctypes.create_string_buffer(data, len(data))
+            self.lib.retro_unserialize.argtypes = [ctypes.c_void_p, ctypes.c_size_t]
+            self.lib.retro_unserialize.restype = ctypes.c_bool
+            ok = self.lib.retro_unserialize(buf, len(data))
+            if ok:
+                print(f"[Savestate] Estado restaurado ({len(data)} bytes)")
+            else:
+                print("[Savestate] retro_unserialize falló")
+            return ok
+        except Exception as e:
+            print(f"[Savestate] Error al deserializar: {e}")
+            return False
 
     # Descarga el juego actual y desinicializa el núcleo, liberando recursos.
     def unload(self):
@@ -457,6 +510,8 @@ class RetroCore:
         self.fbo_width = 0
         self.fbo_height = 0
         self.last_win_size = (-1, -1)
+        self._pending_sample_rate = 0
+        self._current_sample_rate = 0
 
         # Limpiar referencia global
         if _current_core is self:
@@ -642,14 +697,38 @@ class RetroCore:
             hw = ctypes.cast(data, ctypes.POINTER(RetroHWRenderCallback)).contents
             hw.get_current_framebuffer = c_hw_get_current_framebuffer_t(get_current_framebuffer_callback)
             hw.get_proc_address = c_hw_get_proc_address_t(get_proc_address_callback)
-            
+
             self.context_reset_cb = hw.context_reset
             self.hw_render_depth = hw.depth
             self.hw_render_stencil = hw.stencil
             self.bottom_left_origin = hw.bottom_left_origin
-            
+
             self._hw_refs.append((hw.get_current_framebuffer, hw.get_proc_address))
             print("Environment: Set HW Render (Aceptado)")
+            return True
+
+        elif cmd == RETRO_ENVIRONMENT_SET_SYSTEM_AV_INFO:
+            # El core solicita actualizar toda la info AV (resolución + timing).
+            # Ocurre típicamente al cambiar de renderizador SW→GL.
+            av = ctypes.cast(data, ctypes.POINTER(RetroSystemAVInfo)).contents
+            new_w = av.geometry.base_width
+            new_h = av.geometry.base_height
+            new_ar = av.geometry.aspect_ratio
+            new_sr = av.timing.sample_rate
+            print(f"[ENV] SET_SYSTEM_AV_INFO → {new_w}x{new_h} ar={new_ar:.4f} sr={new_sr:.0f}")
+            self.base_width = new_w
+            self.base_height = new_h
+            self.aspect_ratio = new_ar
+            self.input_manager.update_geometry(new_w, new_h, new_ar)
+            self.last_win_size = (-1, -1)  # forzar recalculo del viewport
+            # Recrear FBO con las dimensiones y flags depth/stencil actualizados.
+            # Esto es seguro: estamos en el hilo GL (llamado desde paintGL → retro_run),
+            # y el core llamaá su propio context_reset_cb DESPUÉS de este callback,
+            # por lo que necesita el FBO válido ya disponible en get_current_framebuffer().
+            self.init_framebuffer(new_w, new_h)
+            # Diferir reinicio de audio (PyAudio crea hilos; hacerlo aquí es inseguro).
+            if new_sr > 0 and int(new_sr) != self._current_sample_rate:
+                self._pending_sample_rate = int(new_sr)
             return True
 
         elif cmd == RETRO_ENVIRONMENT_SET_GEOMETRY:

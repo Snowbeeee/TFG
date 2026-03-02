@@ -45,6 +45,7 @@ class MainWindow(QMainWindow):
         self._archivos_actuales = set()
         self._watcher = None
         self._filtro_lista_actual = None  # None = todos
+        self._prev_ds_renderer_index = 0  # para detectar cambios de renderer DS
 
         # --- Configuración de la UI ---
         self.ui = MainWindowUI()
@@ -127,6 +128,8 @@ class MainWindow(QMainWindow):
         # Aplicar opciones gráficas antes de cargar el core
         self.game_page.game_widget.core_options_extra = self._build_core_options_extra()
         self.game_page.load_game(juego)
+        # Registrar renderer activo al iniciar el juego
+        self._prev_ds_renderer_index = self.config_page.ui.dsRendererCombo.currentIndex()
         # Aplicar volumen actual al audio del juego
         if self.game_page.game_widget.audio_mgr:
             self.game_page.game_widget.audio_mgr.volume = self.config_page.volume / 100.0
@@ -166,10 +169,21 @@ class MainWindow(QMainWindow):
     def _on_graphics_changed(self):
         """Aplica las opciones gráficas al core activo si hay juego en marcha."""
         self._sync_config_to_game_sidebar()
-        core = self.game_page.game_widget.core
-        if core:
+        new_renderer_idx = self.config_page.ui.dsRendererCombo.currentIndex()
+        renderer_changed = new_renderer_idx != self._prev_ds_renderer_index
+        self._prev_ds_renderer_index = new_renderer_idx
+
+        if self.game_page.juego_actual and renderer_changed:
+            # El renderer DS cambió mientras hay un juego en ejecución.
+            # melonDS DS no soporta hot-swap en runtime; recargamos con savestate
+            # en memoria para que el juego continúe exactamente donde estaba.
+            print(f"[Frontend] Renderer DS cambió → recargando con savestate")
+            self.game_page.reload_game(self._build_core_options_extra())
+            if self.game_page.game_widget.audio_mgr:
+                self.game_page.game_widget.audio_mgr.volume = self.config_page.volume / 100.0
+        elif self.game_page.game_widget.core:
             for key, val in self._build_core_options_extra().items():
-                core.set_option(key, val)
+                self.game_page.game_widget.core.set_option(key, val)
 
     # ── Sincronización bidireccional config ↔ game sidebar ──
 
@@ -196,10 +210,7 @@ class MainWindow(QMainWindow):
         self.config_page.ui.dsRendererCombo.setCurrentIndex(sb.ds_renderer_index)
         self.config_page.ui.dsResolutionCombo.setCurrentIndex(sb.ds_resolution_index)
         self.config_page.ui.citraResolutionCombo.setCurrentIndex(sb.citra_resolution_index)
-        core = self.game_page.game_widget.core
-        if core:
-            for key, val in self._build_core_options_extra().items():
-                core.set_option(key, val)
+        # _on_graphics_changed se disparará automáticamente por la señal del combo
 
     # ------------------------------------------------------------------
     #  Sidebar helpers
