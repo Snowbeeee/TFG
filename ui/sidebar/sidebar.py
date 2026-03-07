@@ -1,6 +1,6 @@
-from PyQt6.QtWidgets import QInputDialog
 from PyQt6.QtCore import pyqtSignal, QObject
 from ui.sidebar.sidebarUI import SidebarUI
+from ui.popups.popupAnadir.popupAnadir import PopupAnadir
 from lista import Lista
 
 
@@ -36,14 +36,9 @@ class Sidebar(QObject):
             seccion.lista_borrada.connect(self.lista_borrada.emit)
 
     def _crear_nueva_lista(self):
-        """Pide un nombre al usuario y crea una nueva lista."""
+        """Muestra el popup para añadir una nueva carpeta."""
         parent_w = self._parent_widget if self._parent_widget else self.ui
-        nombre, ok = QInputDialog.getText(parent_w, "Nueva lista", "Nombre de la lista:")
-        if ok and nombre.strip():
-            Lista.crear_lista(nombre.strip())
-            # Re-poblar se delega a MainWindow a través de la señal;
-            # pero como no tenemos los juegos aquí, emitimos todos_clicked
-            # para que MainWindow refresque.  Mejor: poblar se llamará
-            # externamente por MainWindow cuando necesite.
-            # Por ahora simplemente indicamos que la lista cambió.
+        popup = PopupAnadir(parent_w)
+        if popup.exec() and popup.nombre:
+            Lista.crear_lista(popup.nombre)
             self.todos_clicked.emit()

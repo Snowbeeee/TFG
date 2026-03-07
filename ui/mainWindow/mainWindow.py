@@ -1,10 +1,11 @@
 import os
-from PyQt6.QtWidgets import QMainWindow, QMenu, QMessageBox
+from PyQt6.QtWidgets import QMainWindow, QMenu
 from PyQt6.QtCore import QFileSystemWatcher
 from ui.mainWindow.mainWindowUI import MainWindowUI
 from ui.gameWindow.gameWindow import GameWindow
 from ui.configWindow.configWindow import ConfigWindow
 from ui.sidebar.sidebar import Sidebar
+from ui.popups.popupEliminar.popupEliminar import PopupEliminar
 from juego import Juego
 from lista import Lista, SIN_LISTA
 
@@ -283,16 +284,9 @@ class MainWindow(QMainWindow):
         self._poblar_sidebar()
 
     def _borrar_lista(self, nombre_lista):
-        """Pide confirmación y elimina la carpeta; los juegos pasan a Sin Lista."""
-        respuesta = QMessageBox.question(
-            self,
-            "Eliminar carpeta",
-            f'¿Estás seguro de que quieres eliminar la carpeta "{nombre_lista}"?\n'
-            "Los juegos que contiene pasan a Sin Lista.",
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-            QMessageBox.StandardButton.No,
-        )
-        if respuesta == QMessageBox.StandardButton.Yes:
+        """Muestra el popup de confirmación y elimina la carpeta si se acepta."""
+        popup = PopupEliminar(nombre_lista, parent=self)
+        if popup.exec():
             Lista.eliminar_lista(nombre_lista)
             self._mostrar_todos()
 
