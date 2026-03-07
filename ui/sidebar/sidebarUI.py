@@ -135,11 +135,10 @@ class SidebarUI(QFrame):
         self.btnTodos.setCursor(Qt.CursorShape.PointingHandCursor)
         topRowLayout.addWidget(self.btnTodos)
 
-        self.btnNuevaLista = QPushButton("+")
+        self.btnNuevaLista = QPushButton("+ Nueva carpeta")
         self.btnNuevaLista.setObjectName("sidebarAddBtn")
-        self.btnNuevaLista.setFixedWidth(40)
+        self.btnNuevaLista.setMinimumWidth(0)
         self.btnNuevaLista.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.btnNuevaLista.setToolTip("Crear nueva lista")
         topRowLayout.addWidget(self.btnNuevaLista)
 
         main_layout.addWidget(topRow)

@@ -27,9 +27,9 @@ QPushButton#sidebarAddBtn {
     background: transparent;
     border: none;
     color: #3498db;
-    font-size: 20px;
+    font-size: 13px;
     font-weight: bold;
-    padding: 8px;
+    padding: 8px 12px;
 }
 
 QPushButton#sidebarAddBtn:hover {

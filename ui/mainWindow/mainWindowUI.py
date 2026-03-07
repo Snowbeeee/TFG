@@ -212,6 +212,9 @@ class MainWindowUI:
 
         layout.addLayout(bottom_row)
 
+        # Clic en cualquier parte de la carta (excepto btn_borrar) abre la carpeta
+        carta.mousePressEvent = lambda event, b=btn_abrir: b.click()
+
         return carta, btn_abrir, btn_borrar
 
     def poblar_grid(self, juegos, filtro_lista=None):
