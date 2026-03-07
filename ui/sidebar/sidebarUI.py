@@ -169,7 +169,7 @@ class SidebarUI(QFrame):
             sec.deleteLater()
         self._secciones.clear()
 
-        nombres_listas = Lista.obtener_todas_con_sin_lista()
+        nombres_listas = sorted(Lista._datos.keys()) + [SIN_LISTA]
 
         for nombre_lista in nombres_listas:
             juegos_en_lista = Lista.obtener_juegos_de_lista(nombre_lista, juegos)
