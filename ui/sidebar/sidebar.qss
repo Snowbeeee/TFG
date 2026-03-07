@@ -68,8 +68,9 @@ QPushButton#sidebarSectionName {
     color: #3498db;
     font-size: 14px;
     font-weight: bold;
-    padding: 10px 8px;
+    padding: 10px 8px 10px 8px;
     text-align: left;
+    max-width: 290px;
 }
 
 QPushButton#sidebarSectionName:hover {
@@ -99,8 +100,9 @@ QPushButton#sidebarGameItem {
     border: none;
     color: #bdc3c7;
     font-size: 13px;
-    padding: 5px 24px;
+    padding: 5px 12px 5px 24px;
     text-align: left;
+    max-width: 290px;
 }
 
 QPushButton#sidebarGameItem:hover {

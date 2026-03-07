@@ -20,6 +20,7 @@ class _ListaSeccion(QWidget):
         self.nombre_lista = nombre_lista
         self._colapsado = False
         self._items = []  # QPushButton por cada juego
+        self.setMaximumWidth(290)
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -154,6 +155,7 @@ class SidebarUI(QFrame):
 
         self.sidebarContainer = QWidget()
         self.sidebarContainer.setObjectName("sidebarContainer")
+        self.sidebarContainer.setMaximumWidth(290)
         self.sidebarLayout = QVBoxLayout(self.sidebarContainer)
         self.sidebarLayout.setContentsMargins(0, 0, 0, 0)
         self.sidebarLayout.setSpacing(0)
