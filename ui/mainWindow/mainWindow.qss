@@ -116,3 +116,51 @@ QMenu#cardContextMenu::item:checked {
 QWidget#rightPanel {
     background-color: #2c3e50;
 }
+
+/* --- Cartas de carpeta --- */
+QFrame#folderCard {
+    background-color: #2c3e50;
+    border-radius: 12px;
+    border: 2px solid #e67e22;
+}
+
+QFrame#folderCard:hover {
+    border: 2px solid #f39c12;
+    background-color: #34495e;
+}
+
+QLabel#folderCardIcon {
+    font-size: 64px;
+    background-color: transparent;
+}
+
+QLabel#folderCardName {
+    color: #ecf0f1;
+    font-size: 14px;
+    font-weight: bold;
+    background-color: transparent;
+}
+
+QLabel#folderCardCount {
+    color: #95a5a6;
+    font-size: 12px;
+    background-color: transparent;
+}
+
+QPushButton#folderCardButton {
+    background-color: #e67e22;
+    color: #ffffff;
+    font-size: 13px;
+    font-weight: bold;
+    padding: 8px;
+    border-radius: 6px;
+    border: none;
+}
+
+QPushButton#folderCardButton:hover {
+    background-color: #d35400;
+}
+
+QPushButton#folderCardButton:pressed {
+    background-color: #ba4a00;
+}

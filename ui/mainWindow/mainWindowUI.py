@@ -163,20 +163,57 @@ class MainWindowUI:
     CARD_WIDTH = 220
     CARD_SPACING = 20
 
+    def crear_carta_carpeta(self, nombre_lista, count):
+        """Crea una carta visual para una carpeta/lista del grid."""
+        carta = QFrame()
+        carta.setObjectName("folderCard")
+        carta.setFixedSize(self.CARD_WIDTH, 300)
+        carta.setCursor(Qt.CursorShape.PointingHandCursor)
+
+        layout = QVBoxLayout(carta)
+        layout.setContentsMargins(10, 10, 10, 10)
+        layout.setSpacing(6)
+
+        # Icono de carpeta
+        icono_label = QLabel("📁")
+        icono_label.setObjectName("folderCardIcon")
+        icono_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(icono_label, stretch=1)
+
+        # Nombre de la lista
+        nombre_label = QLabel(nombre_lista)
+        nombre_label.setObjectName("folderCardName")
+        nombre_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        nombre_label.setWordWrap(True)
+        layout.addWidget(nombre_label)
+
+        # Contador de juegos
+        texto_count = f"{count} juego{'s' if count != 1 else ''}"
+        count_label = QLabel(texto_count)
+        count_label.setObjectName("folderCardCount")
+        count_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(count_label)
+
+        # Botón Abrir
+        btn_abrir = QPushButton("Abrir")
+        btn_abrir.setObjectName("folderCardButton")
+        btn_abrir.setCursor(Qt.CursorShape.PointingHandCursor)
+        layout.addWidget(btn_abrir)
+
+        return carta, btn_abrir
+
     def poblar_grid(self, juegos, filtro_lista=None):
         """Llena el grid con cartas generadas dinámicamente.
-        Si filtro_lista es un nombre de lista, solo muestra esos juegos.
-        Devuelve (botones_dict, labels_dict) donde:
-          botones_dict = {QPushButton: Juego}
-          labels_dict  = {EditableLabel: Juego}
+        Si filtro_lista es None (vista 'Todos'), muestra una carta por cada carpeta
+        con juegos y las cartas de los juegos sin carpeta asignada.
+        Si filtro_lista es un nombre de lista, solo muestra los juegos de esa lista.
+        Devuelve (botones_juego, labels_juego, menus_juego, botones_carpeta) donde:
+          botones_juego   = {QPushButton: Juego}
+          labels_juego    = {EditableLabel: Juego}
+          menus_juego     = {QPushButton: Juego}
+          botones_carpeta = {QPushButton: nombre_lista}
         """
         self._filtro_lista = filtro_lista
-
-        # Filtrar juegos si hay filtro activo
-        if filtro_lista is not None:
-            juegos_visibles = Lista.obtener_juegos_de_lista(filtro_lista, juegos)
-        else:
-            juegos_visibles = juegos
 
         # Guardar referencias para poder reposicionar al cambiar tamaño
         self._cartas = []
@@ -190,17 +227,39 @@ class MainWindowUI:
         botones = {}
         labels = {}
         menus = {}
-        for juego in juegos_visibles:
-            carta, btn, lbl, btn_menu = self.crear_carta(juego)
-            self._cartas.append(carta)
-            botones[btn] = juego
-            labels[lbl] = juego
-            menus[btn_menu] = juego
+        carpetas = {}
+
+        if filtro_lista is not None:
+            # Filtro activo: mostrar solo los juegos de esa lista
+            juegos_visibles = Lista.obtener_juegos_de_lista(filtro_lista, juegos)
+            for juego in juegos_visibles:
+                carta, btn, lbl, btn_menu = self.crear_carta(juego)
+                self._cartas.append(carta)
+                botones[btn] = juego
+                labels[lbl] = juego
+                menus[btn_menu] = juego
+        else:
+            # Sin filtro: una carta por cada carpeta + juegos sin carpeta
+            for nombre_lista in Lista.obtener_nombres():
+                juegos_en_lista = Lista.obtener_juegos_de_lista(nombre_lista, juegos)
+                if juegos_en_lista:
+                    carta, btn = self.crear_carta_carpeta(nombre_lista, len(juegos_en_lista))
+                    self._cartas.append(carta)
+                    carpetas[btn] = nombre_lista
+
+            # Juegos sin carpeta asignada
+            juegos_sin_lista = Lista.obtener_juegos_de_lista(SIN_LISTA, juegos)
+            for juego in juegos_sin_lista:
+                carta, btn, lbl, btn_menu = self.crear_carta(juego)
+                self._cartas.append(carta)
+                botones[btn] = juego
+                labels[lbl] = juego
+                menus[btn_menu] = juego
 
         # Posicionar con las columnas que quepan ahora
         self._reflow_grid()
 
-        return botones, labels, menus
+        return botones, labels, menus, carpetas
 
     def _calcular_columnas(self):
         """Calcula cuántas columnas caben según el ancho del scrollArea."""
