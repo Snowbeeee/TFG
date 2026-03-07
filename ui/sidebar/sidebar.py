@@ -11,6 +11,7 @@ class Sidebar(QObject):
     juego_clicked = pyqtSignal(str)        # nombre_archivo → lanzar juego
     lista_clicked = pyqtSignal(str)        # nombre_lista → filtrar grid
     todos_clicked = pyqtSignal()           # mostrar todos los juegos
+    lista_borrada = pyqtSignal(str)        # nombre_lista → borrar carpeta
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -32,6 +33,7 @@ class Sidebar(QObject):
         for seccion in secciones:
             seccion.juego_clicked.connect(self.juego_clicked.emit)
             seccion.lista_clicked.connect(self.lista_clicked.emit)
+            seccion.lista_borrada.connect(self.lista_borrada.emit)
 
     def _crear_nueva_lista(self):
         """Pide un nombre al usuario y crea una nueva lista."""

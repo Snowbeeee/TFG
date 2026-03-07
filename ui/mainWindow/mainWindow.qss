@@ -164,3 +164,20 @@ QPushButton#folderCardButton:hover {
 QPushButton#folderCardButton:pressed {
     background-color: #ba4a00;
 }
+
+QPushButton#folderCardDeleteBtn {
+    background-color: #c0392b;
+    color: #ffffff;
+    font-size: 14px;
+    padding: 8px;
+    border-radius: 6px;
+    border: none;
+}
+
+QPushButton#folderCardDeleteBtn:hover {
+    background-color: #e74c3c;
+}
+
+QPushButton#folderCardDeleteBtn:pressed {
+    background-color: #a93226;
+}

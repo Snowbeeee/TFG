@@ -1,5 +1,5 @@
 import os
-from PyQt6.QtWidgets import QMainWindow, QMenu
+from PyQt6.QtWidgets import QMainWindow, QMenu, QMessageBox
 from PyQt6.QtCore import QFileSystemWatcher
 from ui.mainWindow.mainWindowUI import MainWindowUI
 from ui.gameWindow.gameWindow import GameWindow
@@ -38,6 +38,7 @@ class MainWindow(QMainWindow):
         self.labels_juego = {}
         self.menus_juego = {}
         self.botones_carpeta = {}
+        self.botones_borrar_carpeta = {}
         self.game_page = None
         self.config_page = None
         self.sidebar = None
@@ -70,7 +71,7 @@ class MainWindow(QMainWindow):
         self.juegos = Juego.escanear_juegos(ruta_games, ruta_cores)
 
         # Poblar el grid con cartas y conectar cada botón
-        self.botones_juego, self.labels_juego, self.menus_juego, self.botones_carpeta = self.ui.poblar_grid(self.juegos)
+        self.botones_juego, self.labels_juego, self.menus_juego, self.botones_carpeta, self.botones_borrar_carpeta = self.ui.poblar_grid(self.juegos)
         self._conectar_cartas()
 
         # Crear controlador de la sidebar y conectar señales
@@ -83,6 +84,7 @@ class MainWindow(QMainWindow):
         self.sidebar.todos_clicked.connect(self._mostrar_todos)
         self.sidebar.lista_clicked.connect(self._filtrar_por_lista)
         self.sidebar.juego_clicked.connect(self._on_sidebar_juego_clicked)
+        self.sidebar.lista_borrada.connect(self._borrar_lista)
 
         # Página de configuración
         self.config_page = ConfigWindow()
@@ -145,7 +147,7 @@ class MainWindow(QMainWindow):
         Juego.migrar_renombrados(self._ruta_games, self._archivos_actuales, archivos_nuevos)
         self._archivos_actuales = archivos_nuevos
         self.juegos = Juego.escanear_juegos(self._ruta_games, self._ruta_cores)
-        self.botones_juego, self.labels_juego, self.menus_juego, self.botones_carpeta = self.ui.poblar_grid(
+        self.botones_juego, self.labels_juego, self.menus_juego, self.botones_carpeta, self.botones_borrar_carpeta = self.ui.poblar_grid(
             self.juegos, self._filtro_lista_actual
         )
         self._conectar_cartas()
@@ -227,6 +229,8 @@ class MainWindow(QMainWindow):
             btn_menu.clicked.connect(lambda checked, b=btn_menu, j=juego: self._mostrar_menu_carta(b, j))
         for btn, nombre_lista in self.botones_carpeta.items():
             btn.clicked.connect(lambda checked, nl=nombre_lista: self._filtrar_por_lista(nl))
+        for btn, nombre_lista in self.botones_borrar_carpeta.items():
+            btn.clicked.connect(lambda checked, nl=nombre_lista: self._borrar_lista(nl))
 
     def _poblar_sidebar(self):
         """Reconstruye la barra lateral."""
@@ -235,7 +239,7 @@ class MainWindow(QMainWindow):
     def _filtrar_por_lista(self, nombre_lista):
         """Filtra las cartas del grid por la lista seleccionada."""
         self._filtro_lista_actual = nombre_lista
-        self.botones_juego, self.labels_juego, self.menus_juego, self.botones_carpeta = self.ui.poblar_grid(
+        self.botones_juego, self.labels_juego, self.menus_juego, self.botones_carpeta, self.botones_borrar_carpeta = self.ui.poblar_grid(
             self.juegos, nombre_lista
         )
         self._conectar_cartas()
@@ -243,7 +247,7 @@ class MainWindow(QMainWindow):
     def _mostrar_todos(self):
         """Muestra todos los juegos (sin filtro de lista)."""
         self._filtro_lista_actual = None
-        self.botones_juego, self.labels_juego, self.menus_juego, self.botones_carpeta = self.ui.poblar_grid(self.juegos)
+        self.botones_juego, self.labels_juego, self.menus_juego, self.botones_carpeta, self.botones_borrar_carpeta = self.ui.poblar_grid(self.juegos)
         self._conectar_cartas()
         self._poblar_sidebar()
 
@@ -272,11 +276,25 @@ class MainWindow(QMainWindow):
         """Asigna un juego a una lista y refresca la UI."""
         juego.lista = nombre_lista
         # Refrescar grid y sidebar
-        self.botones_juego, self.labels_juego, self.menus_juego, self.botones_carpeta = self.ui.poblar_grid(
+        self.botones_juego, self.labels_juego, self.menus_juego, self.botones_carpeta, self.botones_borrar_carpeta = self.ui.poblar_grid(
             self.juegos, self._filtro_lista_actual
         )
         self._conectar_cartas()
         self._poblar_sidebar()
+
+    def _borrar_lista(self, nombre_lista):
+        """Pide confirmación y elimina la carpeta; los juegos pasan a Sin Lista."""
+        respuesta = QMessageBox.question(
+            self,
+            "Eliminar carpeta",
+            f'¿Estás seguro de que quieres eliminar la carpeta "{nombre_lista}"?\n'
+            "Los juegos que contiene pasan a Sin Lista.",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+        if respuesta == QMessageBox.StandardButton.Yes:
+            Lista.eliminar_lista(nombre_lista)
+            self._mostrar_todos()
 
     def _on_sidebar_juego_clicked(self, nombre_archivo):
         """Cuando se clica un juego en la sidebar, carga ese juego directamente."""

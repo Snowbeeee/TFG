@@ -81,6 +81,19 @@ QWidget#sidebarSectionItems {
     background-color: transparent;
 }
 
+QPushButton#sidebarDeleteBtn {
+    background: transparent;
+    border: none;
+    color: #c0392b;
+    font-size: 14px;
+    padding: 6px 6px;
+}
+
+QPushButton#sidebarDeleteBtn:hover {
+    background-color: #2c3e50;
+    color: #e74c3c;
+}
+
 QPushButton#sidebarGameItem {
     background: transparent;
     border: none;

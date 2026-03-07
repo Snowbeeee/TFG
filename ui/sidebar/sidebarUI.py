@@ -2,7 +2,7 @@ import os
 
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
-    QScrollArea, QFrame
+    QScrollArea, QFrame, QSizePolicy
 )
 from PyQt6.QtCore import Qt, pyqtSignal, QSize
 from PyQt6.QtGui import QIcon, QPixmap
@@ -13,6 +13,7 @@ class _ListaSeccion(QWidget):
     """Sección colapsable en la barra lateral: cabecera + lista de nombres de juego."""
     juego_clicked = pyqtSignal(str)   # nombre_archivo del juego
     lista_clicked = pyqtSignal(str)   # nombre_lista (para filtrar)
+    lista_borrada = pyqtSignal(str)   # nombre_lista (para borrar)
 
     def __init__(self, nombre_lista, parent=None):
         super().__init__(parent)
@@ -42,9 +43,21 @@ class _ListaSeccion(QWidget):
         # Botón nombre (filtra las cartas por esta lista)
         self.name_btn = QPushButton(nombre_lista)
         self.name_btn.setObjectName("sidebarSectionName")
+        self.name_btn.setMinimumWidth(0)
+        self.name_btn.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         self.name_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.name_btn.clicked.connect(lambda: self.lista_clicked.emit(self.nombre_lista))
         row_layout.addWidget(self.name_btn)
+
+        # Botón borrar (solo para listas reales, no SIN_LISTA)
+        if nombre_lista != SIN_LISTA:
+            self.del_btn = QPushButton("🗑")
+            self.del_btn.setObjectName("sidebarDeleteBtn")
+            self.del_btn.setFixedWidth(30)
+            self.del_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+            self.del_btn.setToolTip(f'Eliminar carpeta "{nombre_lista}"')
+            self.del_btn.clicked.connect(lambda: self.lista_borrada.emit(self.nombre_lista))
+            row_layout.addWidget(self.del_btn)
 
         layout.addWidget(header_row)
 
@@ -60,6 +73,7 @@ class _ListaSeccion(QWidget):
         self._colapsado = not self._colapsado
         self.items_container.setVisible(not self._colapsado)
         self.arrow_btn.setText("+" if self._colapsado else "−")
+        self.updateGeometry()
 
     def set_juegos(self, juegos):
         """Llena la sección con los nombres de los juegos dados."""
@@ -70,6 +84,8 @@ class _ListaSeccion(QWidget):
         for juego in juegos:
             btn = QPushButton(juego.titulo)
             btn.setObjectName("sidebarGameItem")
+            btn.setMinimumWidth(0)
+            btn.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
             btn.setCursor(Qt.CursorShape.PointingHandCursor)
             btn.setProperty("nombre_archivo", juego.nombre_archivo)
             # Icono del juego
@@ -113,6 +129,8 @@ class SidebarUI(QFrame):
 
         self.btnTodos = QPushButton("Todos los juegos")
         self.btnTodos.setObjectName("sidebarTodosBtn")
+        self.btnTodos.setMinimumWidth(0)
+        self.btnTodos.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         self.btnTodos.setCursor(Qt.CursorShape.PointingHandCursor)
         topRowLayout.addWidget(self.btnTodos)
 
@@ -131,6 +149,7 @@ class SidebarUI(QFrame):
         self.sidebarScroll.setWidgetResizable(True)
         self.sidebarScroll.setFrameShape(QFrame.Shape.NoFrame)
         self.sidebarScroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.sidebarScroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         main_layout.addWidget(self.sidebarScroll)
 
         self.sidebarContainer = QWidget()
