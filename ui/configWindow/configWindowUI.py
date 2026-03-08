@@ -90,11 +90,6 @@ class ConfigWindowUI:
         dsResLayout.addWidget(self.dsResolutionCombo, 1)
         configLayout.addWidget(self.dsResolutionRow)
 
-        dsNote = QLabel("OpenGL permite aumentar la resolución interna de los juegos de DS.")
-        dsNote.setObjectName("configNote")
-        dsNote.setWordWrap(True)
-        configLayout.addWidget(dsNote)
-
         # ── Sección Gráficos – 3DS (Citra) ──
         titulo3DS = QLabel("Gráficos – 3DS")
         titulo3DS.setObjectName("configSectionTitle")
