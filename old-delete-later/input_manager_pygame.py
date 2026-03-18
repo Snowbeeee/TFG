@@ -1,6 +1,6 @@
 import pygame
 from pygame.locals import *
-from retro_definitions import *
+from libretro.retro_definitions import *
 
 class InputManager:
     def __init__(self):

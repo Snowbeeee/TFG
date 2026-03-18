@@ -1,7 +1,7 @@
 import ctypes
 import os
 import sys
-from retro_definitions import *
+from libretro.retro_definitions import *
 from OpenGL.GL import *
 from OpenGL.GL.framebufferobjects import *
 

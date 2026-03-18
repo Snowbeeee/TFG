@@ -2,9 +2,9 @@ import os
 import sys
 from PyQt6.QtOpenGLWidgets import QOpenGLWidget
 from PyQt6.QtCore import Qt
-from retro_core import RetroCore
-from audio_manager import AudioManager
-from input_manager import QtInputManager
+from libretro.retro_core import RetroCore
+from audio.audio_manager import AudioManager
+from input.input_manager import QtInputManager
 
 
 def _get_base_path():

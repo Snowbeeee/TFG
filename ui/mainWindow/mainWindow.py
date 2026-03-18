@@ -6,7 +6,7 @@ from ui.gameWindow.gameWindow import GameWindow
 from ui.configWindow.configWindow import ConfigWindow
 from ui.sidebar.sidebar import Sidebar
 from ui.popups.popupEliminar.popupEliminar import PopupEliminar
-from juego import Juego
+from game.juego import Juego
 from lista import Lista, SIN_LISTA
 
 

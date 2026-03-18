@@ -1,6 +1,6 @@
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QMouseEvent, QKeyEvent
-from retro_definitions import RETRO_DEVICE_MASK
+from libretro.retro_definitions import RETRO_DEVICE_MASK
 
 class QtInputManager:
     def __init__(self):

@@ -2,8 +2,8 @@ import sys
 import os
 import pygame
 from pygame.locals import * 
-from retro_core import RetroCore
-from audio_manager import AudioManager
+from libretro.retro_core import RetroCore
+from audio.audio_manager import AudioManager
 from input_manager_pygame import InputManager
 
 def main():
