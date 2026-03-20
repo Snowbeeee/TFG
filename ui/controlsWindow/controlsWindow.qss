@@ -1,0 +1,102 @@
+/* --- controlsWindow.qss --- */
+
+QWidget#controlsPage {
+    background-color: #2c3e50;
+}
+
+QLabel#controlsSectionTitle {
+    color: #3498db;
+    font-size: 22px;
+    font-weight: bold;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #4a6278;
+}
+
+QLabel#controlsHelpLabel {
+    color: #95a5a6;
+    font-size: 13px;
+    padding-bottom: 4px;
+}
+
+QTabWidget#controlsTabs::pane {
+    background-color: #2c3e50;
+    border: 1px solid #4a6278;
+    border-top: none;
+    border-radius: 0 0 6px 6px;
+}
+
+QTabBar::tab {
+    background-color: #34495e;
+    color: #bdc3c7;
+    font-size: 14px;
+    font-weight: bold;
+    padding: 8px 24px;
+    border: 1px solid #4a6278;
+    border-bottom: none;
+    border-radius: 6px 6px 0 0;
+    margin-right: 2px;
+}
+
+QTabBar::tab:selected {
+    background-color: #2c3e50;
+    color: #ecf0f1;
+    border-bottom: 2px solid #3498db;
+}
+
+QTabBar::tab:hover:!selected {
+    background-color: #3d566e;
+}
+
+QLabel#controlsButtonLabel {
+    color: #ecf0f1;
+    font-size: 15px;
+    font-weight: bold;
+    padding: 4px 12px;
+}
+
+QPushButton#controlsBindButton {
+    background-color: #34495e;
+    color: #ecf0f1;
+    font-size: 14px;
+    padding: 6px 16px;
+    border: 2px solid #4a6278;
+    border-radius: 6px;
+    min-width: 160px;
+}
+
+QPushButton#controlsBindButton:hover {
+    background-color: #3d566e;
+    border-color: #3498db;
+}
+
+QPushButton#controlsBindButton[waiting="true"] {
+    background-color: #1a3a5c;
+    border-color: #3498db;
+    color: #3498db;
+    font-style: italic;
+}
+
+QPushButton#controlsBindButton[conflict="true"] {
+    background-color: #4a1a1a;
+    border-color: #e74c3c;
+    color: #e74c3c;
+}
+
+QPushButton#controlsResetButton {
+    background-color: transparent;
+    color: #e74c3c;
+    font-size: 13px;
+    border: 1px solid #e74c3c;
+    border-radius: 4px;
+    padding: 6px 16px;
+    margin-top: 12px;
+}
+
+QPushButton#controlsResetButton:hover {
+    background-color: #e74c3c;
+    color: #ecf0f1;
+}
+
+QScrollArea#controlsScroll {
+    background-color: transparent;
+}

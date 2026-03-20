@@ -135,12 +135,14 @@ class ConfigWindow(QWidget):
     def _guardar_config(self):
         if self._config_path:
             try:
-                cfg = {
-                    "volume": self._volume,
-                    "ds_renderer_index": self._ds_renderer_index,
-                    "ds_resolution_index": self._ds_resolution_index,
-                    "citra_resolution_index": self._citra_resolution_index,
-                }
+                cfg = {}
+                if os.path.exists(self._config_path):
+                    with open(self._config_path, "r", encoding="utf-8") as f:
+                        cfg = json.load(f)
+                cfg["volume"] = self._volume
+                cfg["ds_renderer_index"] = self._ds_renderer_index
+                cfg["ds_resolution_index"] = self._ds_resolution_index
+                cfg["citra_resolution_index"] = self._citra_resolution_index
                 with open(self._config_path, "w", encoding="utf-8") as f:
                     json.dump(cfg, f, indent=2)
             except Exception:

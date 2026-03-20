@@ -21,23 +21,19 @@ class Header(QFrame):
         # Conectar botones
         self.ui.linkBiblioteca.clicked.connect(lambda: self._navegar(0))
         self.ui.linkConfiguracion.clicked.connect(lambda: self._navegar(1))
+        self.ui.linkControles.clicked.connect(lambda: self._navegar(2))
 
     def _navegar(self, index):
         """Actualiza el estado visual y emite la señal de navegación."""
-        self.ui.linkBiblioteca.setProperty("active", index == 0)
-        self.ui.linkConfiguracion.setProperty("active", index == 1)
-        # Refrescar estilos para aplicar el estado active
-        self.ui.linkBiblioteca.style().unpolish(self.ui.linkBiblioteca)
-        self.ui.linkBiblioteca.style().polish(self.ui.linkBiblioteca)
-        self.ui.linkConfiguracion.style().unpolish(self.ui.linkConfiguracion)
-        self.ui.linkConfiguracion.style().polish(self.ui.linkConfiguracion)
+        for i, link in enumerate([self.ui.linkBiblioteca, self.ui.linkConfiguracion, self.ui.linkControles]):
+            link.setProperty("active", index == i)
+            link.style().unpolish(link)
+            link.style().polish(link)
         self.navegacion.emit(index)
 
     def set_active(self, index):
         """Cambia el enlace activo sin emitir señal."""
-        self.ui.linkBiblioteca.setProperty("active", index == 0)
-        self.ui.linkConfiguracion.setProperty("active", index == 1)
-        self.ui.linkBiblioteca.style().unpolish(self.ui.linkBiblioteca)
-        self.ui.linkBiblioteca.style().polish(self.ui.linkBiblioteca)
-        self.ui.linkConfiguracion.style().unpolish(self.ui.linkConfiguracion)
-        self.ui.linkConfiguracion.style().polish(self.ui.linkConfiguracion)
+        for i, link in enumerate([self.ui.linkBiblioteca, self.ui.linkConfiguracion, self.ui.linkControles]):
+            link.setProperty("active", index == i)
+            link.style().unpolish(link)
+            link.style().polish(link)

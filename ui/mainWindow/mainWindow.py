@@ -4,6 +4,7 @@ from PyQt6.QtCore import QFileSystemWatcher
 from ui.mainWindow.mainWindowUI import MainWindowUI
 from ui.gameWindow.gameWindow import GameWindow
 from ui.configWindow.configWindow import ConfigWindow
+from ui.controlsWindow.controlsWindow import ControlsWindow
 from ui.sidebar.sidebar import Sidebar
 from ui.popups.popupEliminar.popupEliminar import PopupEliminar
 from game.juego import Juego
@@ -42,6 +43,8 @@ class MainWindow(QMainWindow):
         self.botones_borrar_carpeta = {}
         self.game_page = None
         self.config_page = None
+        self.controls_page = None
+
         self.sidebar = None
         self._ruta_games = None
         self._ruta_cores = None
@@ -91,12 +94,16 @@ class MainWindow(QMainWindow):
         self.config_page = ConfigWindow()
         self.config_page.set_config_path(os.path.join(base, "config.json"))
         self.ui.stackedWidget.addWidget(self.config_page)  # index 1
+        self.controls_page = ControlsWindow()
+        self.controls_page.set_config_path(os.path.join(base, "config.json"))
+        self.ui.stackedWidget.addWidget(self.controls_page)  # index 2
+        self.controls_page.controles_cambiados.connect(self._on_controls_changed)
         self.config_page.volumen_cambiado.connect(self._on_volume_changed)
         self.config_page.resolucion_cambiada.connect(self._on_graphics_changed)
 
         # Página de juego permanente (se crea una sola vez)
         self.game_page = GameWindow()
-        self.ui.stackedWidget.addWidget(self.game_page)  # index 2
+        self.ui.stackedWidget.addWidget(self.game_page)  # index 3
         self.game_page.salir_signal.connect(self._volver_menu)
 
         # Sincronizar game sidebar → config page
@@ -132,6 +139,11 @@ class MainWindow(QMainWindow):
         # Aplicar opciones gráficas antes de cargar el core
         self.game_page.game_widget.core_options_extra = self._build_core_options_extra()
         self.game_page.load_game(juego)
+        # Aplicar bindings DESPUÉS de load_game (que recrea el widget)
+        self.game_page.game_widget.set_pending_bindings(
+            self.controls_page.ds_bindings,
+            self.controls_page.n3ds_bindings
+        )
         # Registrar renderer activo al iniciar el juego
         self._prev_ds_renderer_index = self.config_page.ui.dsRendererCombo.currentIndex()
         # Aplicar volumen actual al audio del juego
@@ -170,6 +182,13 @@ class MainWindow(QMainWindow):
         if audio_mgr:
             audio_mgr.volume = value / 100.0
 
+    def _on_controls_changed(self):
+        """Recarga los controles en el InputManager del juego activo."""
+        self.game_page.game_widget.set_pending_bindings(
+            self.controls_page.ds_bindings,
+            self.controls_page.n3ds_bindings
+        )
+
     def _on_graphics_changed(self):
         """Aplica las opciones gráficas al core activo si hay juego en marcha."""
         self._sync_config_to_game_sidebar()
@@ -183,6 +202,11 @@ class MainWindow(QMainWindow):
             # en memoria para que el juego continúe exactamente donde estaba.
             print(f"[Frontend] Renderer DS cambió → recargando con savestate")
             self.game_page.reload_game(self._build_core_options_extra())
+            # Re-aplicar bindings tras recrear el widget
+            self.game_page.game_widget.set_pending_bindings(
+                self.controls_page.ds_bindings,
+                self.controls_page.n3ds_bindings
+            )
             if self.game_page.game_widget.audio_mgr:
                 self.game_page.game_widget.audio_mgr.volume = self.config_page.volume / 100.0
         elif self.game_page.game_widget.core:

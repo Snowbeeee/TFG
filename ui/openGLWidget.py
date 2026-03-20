@@ -1,7 +1,7 @@
 import os
 import sys
 from PyQt6.QtOpenGLWidgets import QOpenGLWidget
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, QTimer
 from libretro.retro_core import RetroCore
 from audio.audio_manager import AudioManager
 from input.input_manager import QtInputManager
@@ -31,6 +31,17 @@ class OpenGLWidget(QOpenGLWidget):
         self.setMouseTracking(True)
         self.setAttribute(Qt.WidgetAttribute.WA_OpaquePaintEvent)
         self.setAttribute(Qt.WidgetAttribute.WA_NoSystemBackground)
+
+        # Gamepad polling
+        self._pygame_joystick = None
+        self._gamepad_poll_timer = QTimer(self)
+        self._gamepad_poll_timer.setInterval(16)  # ~60 Hz
+        self._gamepad_poll_timer.timeout.connect(self._poll_gamepad)
+        self._gamepad_rescan_timer = QTimer(self)
+        self._gamepad_rescan_timer.setInterval(2000)
+        self._gamepad_rescan_timer.timeout.connect(self._rescan_gamepad)
+        # Pending bindings: se aplican cuando se crea un nuevo input_mgr
+        self._pending_bindings = None
 
     def initializeGL(self):
         """Se llama una sola vez por Qt cuando el contexto GL está listo."""
@@ -78,6 +89,11 @@ class OpenGLWidget(QOpenGLWidget):
         if self.core.load_game(self.rom_path):
             self.initialized = True
             print("Juego iniciado en Qt!")
+            # Aplicar bindings pendientes antes de empezar
+            if self._pending_bindings and self.input_mgr:
+                ds_b, n3ds_b = self._pending_bindings
+                self.input_mgr.load_bindings(ds_b, n3ds_b)
+            self._init_gamepad_polling()
         else:
             print("Fallo al iniciar el juego")
 
@@ -85,6 +101,9 @@ class OpenGLWidget(QOpenGLWidget):
 
     def unload_game(self):
         """Descarga el core y el audio, dejando el widget GL vivo."""
+        self._gamepad_poll_timer.stop()
+        self._gamepad_rescan_timer.stop()
+        self._pygame_joystick = None
         if self.core:
             # Activar el contexto GL antes de descargar para que los
             # recursos OpenGL se liberen correctamente.
@@ -156,6 +175,71 @@ class OpenGLWidget(QOpenGLWidget):
         self.initialized = False
         self.core_path = None
         self.rom_path = None
+
+    def set_pending_bindings(self, ds_bindings, n3ds_bindings):
+        """Guarda bindings para aplicar cuando se cree el input_mgr."""
+        self._pending_bindings = (ds_bindings, n3ds_bindings)
+        # Si ya hay input_mgr activo, aplicar inmediatamente
+        if self.input_mgr:
+            self.input_mgr.load_bindings(ds_bindings, n3ds_bindings)
+
+    def _init_gamepad_polling(self):
+        """Intenta inicializar pygame.joystick y arranca el timer de polling."""
+        try:
+            import pygame
+            if not pygame.get_init():
+                pygame.init()
+            if not pygame.joystick.get_init():
+                pygame.joystick.init()
+            if pygame.joystick.get_count() > 0:
+                self._pygame_joystick = pygame.joystick.Joystick(0)
+                self._pygame_joystick.init()
+            else:
+                self._pygame_joystick = None
+        except ImportError:
+            self._pygame_joystick = None
+        self._gamepad_poll_timer.start()
+        self._gamepad_rescan_timer.start()
+
+    def _rescan_gamepad(self):
+        """Re-escanea gamepads solo si no hay ninguno conectado."""
+        if self._pygame_joystick is not None:
+            try:
+                import pygame
+                pygame.event.pump()
+                self._pygame_joystick.get_init()
+            except Exception:
+                self._pygame_joystick = None
+            return
+        try:
+            import pygame
+            pygame.joystick.quit()
+            pygame.joystick.init()
+            if pygame.joystick.get_count() > 0:
+                self._pygame_joystick = pygame.joystick.Joystick(0)
+                self._pygame_joystick.init()
+        except Exception:
+            pass
+
+    def _poll_gamepad(self):
+        """Lee estado del gamepad y lo pasa al InputManager."""
+        if not self._pygame_joystick or not self.input_mgr:
+            return
+        try:
+            import pygame
+            pygame.event.pump()
+            buttons = {}
+            for i in range(self._pygame_joystick.get_numbuttons()):
+                buttons[i] = bool(self._pygame_joystick.get_button(i))
+            axes = {}
+            for i in range(self._pygame_joystick.get_numaxes()):
+                axes[i] = self._pygame_joystick.get_axis(i)
+            hats = {}
+            for i in range(self._pygame_joystick.get_numhats()):
+                hats[i] = self._pygame_joystick.get_hat(i)
+            self.input_mgr.update_gamepad_state(buttons, axes, hats)
+        except Exception:
+            pass
 
     def resizeGL(self, w, h):
         if self.core:

@@ -20,7 +20,6 @@ class _ListaSeccion(QWidget):
         self.nombre_lista = nombre_lista
         self._colapsado = False
         self._items = []  # QPushButton por cada juego
-        # Dejamos un pequeño margen interno para evitar desbordes visuales.
         self.setMaximumWidth(290)
 
         layout = QVBoxLayout(self)

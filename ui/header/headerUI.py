@@ -9,6 +9,7 @@ class HeaderUI:
         # --- Declaración de todas las variables de instancia ---
         self.linkBiblioteca = None
         self.linkConfiguracion = None
+        self.linkControles = None
 
     def setupUi(self, parent):
         parent.setObjectName("headerBar")
@@ -29,5 +30,11 @@ class HeaderUI:
         self.linkConfiguracion.setCursor(Qt.CursorShape.PointingHandCursor)
         self.linkConfiguracion.setProperty("active", False)
         headerLayout.addWidget(self.linkConfiguracion)
+
+        self.linkControles = QPushButton("Controles")
+        self.linkControles.setObjectName("navLink")
+        self.linkControles.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.linkControles.setProperty("active", False)
+        headerLayout.addWidget(self.linkControles)
 
         headerLayout.addStretch()

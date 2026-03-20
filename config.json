@@ -2,5 +2,159 @@
   "volume": 100,
   "ds_renderer_index": 1,
   "ds_resolution_index": 1,
-  "citra_resolution_index": 2
+  "citra_resolution_index": 2,
+  "controls_ds": {
+    "a": {
+      "type": "gamepad_button",
+      "value": 0
+    },
+    "b": {
+      "type": "gamepad_button",
+      "value": 1
+    },
+    "x": {
+      "type": "gamepad_button",
+      "value": 2
+    },
+    "y": {
+      "type": "gamepad_button",
+      "value": 3
+    },
+    "l": {
+      "type": "gamepad_button",
+      "value": 4
+    },
+    "r": {
+      "type": "gamepad_button",
+      "value": 5
+    },
+    "start": {
+      "type": "gamepad_button",
+      "value": 7
+    },
+    "select": {
+      "type": "gamepad_button",
+      "value": 6
+    },
+    "up": {
+      "type": "gamepad_hat",
+      "value": 0,
+      "hat": 0,
+      "hx": 0,
+      "hy": 1
+    },
+    "down": {
+      "type": "gamepad_hat",
+      "value": 0,
+      "hat": 0,
+      "hx": 0,
+      "hy": -1
+    },
+    "left": {
+      "type": "gamepad_hat",
+      "value": 0,
+      "hat": 0,
+      "hx": -1,
+      "hy": 0
+    },
+    "right": {
+      "type": "gamepad_hat",
+      "value": 0,
+      "hat": 0,
+      "hx": 1,
+      "hy": 0
+    }
+  },
+  "controls_3ds": {
+    "a": {
+      "type": "gamepad_button",
+      "value": 0
+    },
+    "b": {
+      "type": "gamepad_button",
+      "value": 1
+    },
+    "x": {
+      "type": "gamepad_button",
+      "value": 2
+    },
+    "y": {
+      "type": "gamepad_button",
+      "value": 3
+    },
+    "l": {
+      "type": "gamepad_button",
+      "value": 4
+    },
+    "r": {
+      "type": "gamepad_button",
+      "value": 5
+    },
+    "zl": {
+      "type": "gamepad_axis",
+      "value": 4,
+      "direction": "+"
+    },
+    "zr": {
+      "type": "gamepad_axis",
+      "value": 5,
+      "direction": "+"
+    },
+    "start": {
+      "type": "gamepad_button",
+      "value": 7
+    },
+    "select": {
+      "type": "gamepad_button",
+      "value": 6
+    },
+    "up": {
+      "type": "gamepad_hat",
+      "value": 0,
+      "hat": 0,
+      "hx": 0,
+      "hy": 1
+    },
+    "down": {
+      "type": "gamepad_hat",
+      "value": 0,
+      "hat": 0,
+      "hx": 0,
+      "hy": -1
+    },
+    "left": {
+      "type": "gamepad_hat",
+      "value": 0,
+      "hat": 0,
+      "hx": -1,
+      "hy": 0
+    },
+    "right": {
+      "type": "gamepad_hat",
+      "value": 0,
+      "hat": 0,
+      "hx": 1,
+      "hy": 0
+    },
+    "circle_up": {
+      "type": "gamepad_axis",
+      "value": 1,
+      "direction": "-"
+    },
+    "circle_down": {
+      "type": "gamepad_axis",
+      "value": 1,
+      "direction": "+"
+    },
+    "circle_left": {
+      "type": "gamepad_axis",
+      "value": 0,
+      "direction": "-"
+    },
+    "circle_right": {
+      "type": "gamepad_axis",
+      "value": 0,
+      "direction": "+"
+    }
+  }
 }
