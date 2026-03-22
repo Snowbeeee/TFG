@@ -113,7 +113,6 @@ class ControlsWindow(QWidget):
         # Gamepad polling
         self._gamepad = None
         self._gamepad_timer = None
-        self._rescan_timer = None
         self._prev_gamepad_buttons = {}
         self._prev_gamepad_axes = {}
         self._prev_gamepad_hats = {}
@@ -333,35 +332,6 @@ class ControlsWindow(QWidget):
             self._gamepad_timer.timeout.connect(self._poll_gamepad)
         self._gamepad_timer.start()
 
-        # Timer para re-escanear gamepads cada 3s (hot-plug)
-        if self._rescan_timer is None:
-            self._rescan_timer = QTimer(self)
-            self._rescan_timer.setInterval(3000)
-            self._rescan_timer.timeout.connect(self._rescan_gamepad)
-        self._rescan_timer.start()
-
-    def _rescan_gamepad(self):
-        """Re-escanea gamepads solo si no hay ninguno conectado."""
-        if self._gamepad is not None:
-            # Ya tenemos uno, verificar que sigue vivo
-            try:
-                import pygame
-                pygame.event.pump()
-                self._gamepad.get_init()
-            except Exception:
-                self._gamepad = None
-            return
-        # No hay gamepad, intentar detectar uno nuevo
-        try:
-            import pygame
-            pygame.joystick.quit()
-            pygame.joystick.init()
-            if pygame.joystick.get_count() > 0:
-                self._gamepad = pygame.joystick.Joystick(0)
-                self._gamepad.init()
-        except Exception:
-            pass
-
     def _snapshot_gamepad(self):
         """Guarda el estado actual del gamepad para detectar cambios."""
         self._prev_gamepad_buttons = {}
@@ -371,7 +341,7 @@ class ControlsWindow(QWidget):
             return
         try:
             import pygame
-            pygame.event.pump()
+            self._process_gamepad_events()
             for i in range(self._gamepad.get_numbuttons()):
                 self._prev_gamepad_buttons[i] = self._gamepad.get_button(i)
             for i in range(self._gamepad.get_numaxes()):
@@ -381,13 +351,26 @@ class ControlsWindow(QWidget):
         except Exception:
             pass
 
+    def _process_gamepad_events(self):
+        """Gestiona hot-plug de gamepads via eventos SDL2."""
+        try:
+            import pygame
+            for event in pygame.event.get():
+                if event.type == pygame.JOYDEVICEADDED and self._gamepad is None:
+                    self._gamepad = pygame.joystick.Joystick(event.device_index)
+                    self._gamepad.init()
+                elif event.type == pygame.JOYDEVICEREMOVED:
+                    self._gamepad = None
+        except Exception:
+            pass
+
     def _poll_gamepad(self):
         """Comprueba si se ha pulsado un botón o movido un eje del gamepad."""
+        self._process_gamepad_events()
         if not self._waiting_for_input or not self._gamepad:
             return
         try:
             import pygame
-            pygame.event.pump()
 
             # Comprobar botones
             for i in range(self._gamepad.get_numbuttons()):
@@ -428,19 +411,13 @@ class ControlsWindow(QWidget):
 
     def showEvent(self, event):
         super().showEvent(event)
-        # Re-escanear por si se conectó un mando mientras no estábamos visibles
-        self._rescan_gamepad()
         if self._gamepad_timer:
             self._gamepad_timer.start()
-        if self._rescan_timer:
-            self._rescan_timer.start()
 
     def hideEvent(self, event):
         super().hideEvent(event)
         if self._gamepad_timer:
             self._gamepad_timer.stop()
-        if self._rescan_timer:
-            self._rescan_timer.stop()
         if self._waiting_for_input:
             self._cancel_binding()
 

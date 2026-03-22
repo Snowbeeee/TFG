@@ -37,9 +37,6 @@ class OpenGLWidget(QOpenGLWidget):
         self._gamepad_poll_timer = QTimer(self)
         self._gamepad_poll_timer.setInterval(16)  # ~60 Hz
         self._gamepad_poll_timer.timeout.connect(self._poll_gamepad)
-        self._gamepad_rescan_timer = QTimer(self)
-        self._gamepad_rescan_timer.setInterval(2000)
-        self._gamepad_rescan_timer.timeout.connect(self._rescan_gamepad)
         # Pending bindings: se aplican cuando se crea un nuevo input_mgr
         self._pending_bindings = None
 
@@ -102,7 +99,6 @@ class OpenGLWidget(QOpenGLWidget):
     def unload_game(self):
         """Descarga el core y el audio, dejando el widget GL vivo."""
         self._gamepad_poll_timer.stop()
-        self._gamepad_rescan_timer.stop()
         self._pygame_joystick = None
         if self.core:
             # Activar el contexto GL antes de descargar para que los
@@ -199,35 +195,24 @@ class OpenGLWidget(QOpenGLWidget):
         except ImportError:
             self._pygame_joystick = None
         self._gamepad_poll_timer.start()
-        self._gamepad_rescan_timer.start()
-
-    def _rescan_gamepad(self):
-        """Re-escanea gamepads solo si no hay ninguno conectado."""
-        if self._pygame_joystick is not None:
-            try:
-                import pygame
-                pygame.event.pump()
-                self._pygame_joystick.get_init()
-            except Exception:
-                self._pygame_joystick = None
-            return
-        try:
-            import pygame
-            pygame.joystick.quit()
-            pygame.joystick.init()
-            if pygame.joystick.get_count() > 0:
-                self._pygame_joystick = pygame.joystick.Joystick(0)
-                self._pygame_joystick.init()
-        except Exception:
-            pass
 
     def _poll_gamepad(self):
-        """Lee estado del gamepad y lo pasa al InputManager."""
-        if not self._pygame_joystick or not self.input_mgr:
+        """Lee estado del gamepad y lo pasa al InputManager, gestionando hot-plug via eventos SDL2."""
+        if not self.input_mgr:
             return
         try:
             import pygame
-            pygame.event.pump()
+            # Procesar eventos SDL2: detecta conexión/desconexión sin reinicializar
+            for event in pygame.event.get():
+                if event.type == pygame.JOYDEVICEADDED and self._pygame_joystick is None:
+                    self._pygame_joystick = pygame.joystick.Joystick(event.device_index)
+                    self._pygame_joystick.init()
+                elif event.type == pygame.JOYDEVICEREMOVED:
+                    self._pygame_joystick = None
+
+            if not self._pygame_joystick:
+                return
+
             buttons = {}
             for i in range(self._pygame_joystick.get_numbuttons()):
                 buttons[i] = bool(self._pygame_joystick.get_button(i))
