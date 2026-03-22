@@ -70,12 +70,14 @@ class GameWindow(QWidget):
     def juego_actual(self):
         return self._juego_actual
 
-    def load_game(self, juego):
+    def load_game(self, juego, core_options_extra=None):
         """Carga un juego: recrea el contexto GL y arranca el timer."""
         self.timer.stop()
         self._recreate_game_widget()              # contexto GL limpio para cada juego
         self._juego_actual = juego
         self.ui.gameSideBar.set_consola(juego.extension)
+        if core_options_extra:
+            self.game_widget.core_options_extra = core_options_extra
         self.game_widget.load_game(juego.ruta_core, juego.ruta_juego)
         self.game_widget.setFocus()
         if not self.timer.isActive():

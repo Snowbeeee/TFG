@@ -1,8 +1,8 @@
 {
   "volume": 100,
   "ds_renderer_index": 1,
-  "ds_resolution_index": 1,
-  "citra_resolution_index": 2,
+  "ds_resolution_index": 3,
+  "citra_resolution_index": 3,
   "controls_ds": {
     "a": {
       "type": "gamepad_button",

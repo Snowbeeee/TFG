@@ -52,6 +52,8 @@ class MainWindow(QMainWindow):
         self._watcher = None
         self._filtro_lista_actual = None  # None = todos
         self._prev_ds_renderer_index = 0  # para detectar cambios de renderer DS
+        self._prev_ds_resolution_index = 0
+        self._prev_citra_resolution_index = 0
 
         # --- Configuración de la UI ---
         self.ui = MainWindowUI()
@@ -136,16 +138,17 @@ class MainWindow(QMainWindow):
         # Sincronizar config → game sidebar antes de mostrar
         self._sync_config_to_game_sidebar()
         self.ui.stackedWidget.setCurrentWidget(self.game_page)
-        # Aplicar opciones gráficas antes de cargar el core
-        self.game_page.game_widget.core_options_extra = self._build_core_options_extra()
-        self.game_page.load_game(juego)
+        # Cargar juego con las opciones gráficas actuales
+        self.game_page.load_game(juego, self._build_core_options_extra())
         # Aplicar bindings DESPUÉS de load_game (que recrea el widget)
         self.game_page.game_widget.set_pending_bindings(
             self.controls_page.ds_bindings,
             self.controls_page.n3ds_bindings
         )
-        # Registrar renderer activo al iniciar el juego
+        # Registrar estado gráfico actual para detectar cambios en runtime
         self._prev_ds_renderer_index = self.config_page.ui.dsRendererCombo.currentIndex()
+        self._prev_ds_resolution_index = self.config_page.ui.dsResolutionCombo.currentIndex()
+        self._prev_citra_resolution_index = self.config_page.ui.citraResolutionCombo.currentIndex()
         # Aplicar volumen actual al audio del juego
         if self.game_page.game_widget.audio_mgr:
             self.game_page.game_widget.audio_mgr.volume = self.config_page.volume / 100.0
@@ -192,24 +195,52 @@ class MainWindow(QMainWindow):
     def _on_graphics_changed(self):
         """Aplica las opciones gráficas al core activo si hay juego en marcha."""
         self._sync_config_to_game_sidebar()
-        new_renderer_idx = self.config_page.ui.dsRendererCombo.currentIndex()
-        renderer_changed = new_renderer_idx != self._prev_ds_renderer_index
-        self._prev_ds_renderer_index = new_renderer_idx
 
-        if self.game_page.juego_actual and renderer_changed:
-            # El renderer DS cambió mientras hay un juego en ejecución.
-            # melonDS DS no soporta hot-swap en runtime; recargamos con savestate
-            # en memoria para que el juego continúe exactamente donde estaba.
-            print(f"[Frontend] Renderer DS cambió → recargando con savestate")
-            self.game_page.reload_game(self._build_core_options_extra())
-            # Re-aplicar bindings tras recrear el widget
-            self.game_page.game_widget.set_pending_bindings(
-                self.controls_page.ds_bindings,
-                self.controls_page.n3ds_bindings
-            )
-            if self.game_page.game_widget.audio_mgr:
-                self.game_page.game_widget.audio_mgr.volume = self.config_page.volume / 100.0
-        elif self.game_page.game_widget.core:
+        if not self.game_page.juego_actual:
+            return
+
+        # Comprobar si algo ha cambiado realmente
+        new_renderer = self.config_page.ui.dsRendererCombo.currentIndex()
+        new_ds_res = self.config_page.ui.dsResolutionCombo.currentIndex()
+        new_citra_res = self.config_page.ui.citraResolutionCombo.currentIndex()
+
+        ds_changed = (
+            new_renderer != self._prev_ds_renderer_index
+            or new_ds_res != self._prev_ds_resolution_index
+        )
+        citra_changed = new_citra_res != self._prev_citra_resolution_index
+
+        if not ds_changed and not citra_changed:
+            return
+
+        is_ds = self.game_page.juego_actual.extension == '.nds'
+
+        if is_ds and ds_changed:
+            renderer_changed = new_renderer != self._prev_ds_renderer_index
+            self._prev_ds_renderer_index = new_renderer
+            self._prev_ds_resolution_index = new_ds_res
+            self._prev_citra_resolution_index = new_citra_res
+            if renderer_changed:
+                # Cambio de renderer (SW↔GL) requiere reload completo
+                print("[Frontend] Renderer DS cambiado → recargando con savestate")
+                self.game_page.reload_game(self._build_core_options_extra())
+                self.game_page.game_widget.set_pending_bindings(
+                    self.controls_page.ds_bindings,
+                    self.controls_page.n3ds_bindings
+                )
+                if self.game_page.game_widget.audio_mgr:
+                    self.game_page.game_widget.audio_mgr.volume = self.config_page.volume / 100.0
+            elif self.game_page.game_widget.core:
+                # Solo resolución; melonDS la aplica via SET_SYSTEM_AV_INFO
+                print("[Frontend] Resolución DS cambiada → hot-swap")
+                for key, val in self._build_core_options_extra().items():
+                    self.game_page.game_widget.core.set_option(key, val)
+        elif not is_ds and citra_changed and self.game_page.game_widget.core:
+            # Citra soporta hot-swap de resolución via set_option
+            self._prev_ds_renderer_index = new_renderer
+            self._prev_ds_resolution_index = new_ds_res
+            self._prev_citra_resolution_index = new_citra_res
+            print("[Frontend] Resolución 3DS cambiada → hot-swap")
             for key, val in self._build_core_options_extra().items():
                 self.game_page.game_widget.core.set_option(key, val)
 
