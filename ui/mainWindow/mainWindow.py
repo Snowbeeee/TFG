@@ -7,7 +7,7 @@ from ui.configWindow.configWindow import ConfigWindow
 from ui.controlsWindow.controlsWindow import ControlsWindow
 from ui.sidebar.sidebar import Sidebar
 from ui.popups.popupEliminar.popupEliminar import PopupEliminar
-from game.juego import Juego
+from game.juego import Juego, extraer_titulo_rom
 from lista import Lista, SIN_LISTA
 
 
@@ -134,6 +134,13 @@ class MainWindow(QMainWindow):
 
     def _jugar(self, juego):
         """Carga el juego seleccionado y cambia a la página de juego."""
+        # Extraer y mostrar el título interno de la ROM
+        titulo_rom = extraer_titulo_rom(juego.ruta_juego, juego.extension)
+        if titulo_rom:
+            print(f"[ROM] Título interno: {titulo_rom}")
+        else:
+            print(f"[ROM] No se pudo extraer el título interno de {juego.nombre_archivo}")
+
         self.ui.header.hide()
         # Sincronizar config → game sidebar antes de mostrar
         self._sync_config_to_game_sidebar()

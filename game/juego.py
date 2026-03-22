@@ -186,6 +186,76 @@ def _extraer_icono(juego):
     return None
 
 
+def extraer_titulo_rom(ruta_rom, extension):
+    """Extrae el título interno completo de la ROM.
+    NDS: título inglés UTF-16LE del banner.
+    3DS: título largo inglés UTF-16LE del SMDH.
+    """
+    try:
+        with open(ruta_rom, 'rb') as f:
+            if extension == '.nds':
+                # El banner tiene títulos en 6 idiomas a partir de offset 0x240:
+                # 0x240=JP, 0x340=EN, 0x440=FR, 0x540=DE, 0x640=IT, 0x740=ES
+                # Cada uno: 256 bytes UTF-16LE (128 chars)
+                f.seek(0x68)
+                banner_offset = struct.unpack('<I', f.read(4))[0]
+                if banner_offset == 0:
+                    # Fallback al código corto de 12 bytes del header
+                    f.seek(0x000)
+                    raw = f.read(12)
+                    return raw.rstrip(b'\x00').decode('ascii', errors='replace').strip()
+
+                # Inglés (índice 1)
+                title_off = banner_offset + 0x240 + 1 * 0x100
+                f.seek(title_off)
+                raw = f.read(0x100)
+                titulo = raw.decode('utf-16-le', errors='replace').rstrip('\x00').strip()
+                return titulo or None
+
+            elif extension == '.3ds':
+                # Localizar SMDH igual que en _extraer_icono_3ds
+                f.seek(0x100)
+                magic = f.read(4)
+                if magic == b'NCSD':
+                    f.seek(0x120)
+                    p0_off = struct.unpack('<I', f.read(4))[0] * 0x200
+                elif magic == b'NCCH':
+                    p0_off = 0
+                else:
+                    return None
+
+                f.seek(p0_off + 0x1A0)
+                exefs_off = p0_off + struct.unpack('<I', f.read(4))[0] * 0x200
+
+                f.seek(exefs_off)
+                icon_off = None
+                for _ in range(10):
+                    name = f.read(8).rstrip(b'\x00').decode('ascii', errors='ignore')
+                    off, sz = struct.unpack('<II', f.read(8))
+                    if name == 'icon':
+                        icon_off = exefs_off + 0x200 + off
+                        break
+                if icon_off is None:
+                    return None
+
+                f.seek(icon_off)
+                if f.read(4) != b'SMDH':
+                    return None
+
+                # Títulos: 16 entradas de idioma, cada una con short(0x80) + long(0x100) + publisher(0x80)
+                # Idiomas: 0=JP, 1=EN, 2=FR, 3=DE, 4=IT, 5=ES, 6=CN_S, 7=KR, 8=NL, 9=PT, 10=RU, 11=CN_T
+                # Inglés (índice 1)
+                entry_off = icon_off + 0x08 + 1 * 0x200
+                # Título largo: offset 0x80 dentro de la entrada, 0x100 bytes (128 chars UTF-16LE)
+                f.seek(entry_off + 0x80)
+                raw = f.read(0x100)
+                titulo = raw.decode('utf-16-le', errors='replace').rstrip('\x00').strip()
+                return titulo or None
+    except Exception as e:
+        print(f"Error extrayendo título de ROM: {e}")
+        return None
+
+
 class Juego:
     # Diccionario compartido por todas las instancias
     _nombres_custom = {}
