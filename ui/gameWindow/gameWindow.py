@@ -1,5 +1,6 @@
-from PyQt6.QtWidgets import QWidget, QVBoxLayout
-from PyQt6.QtCore import QTimer, pyqtSignal
+import time
+from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel
+from PyQt6.QtCore import Qt, QTimer, pyqtSignal
 from ui.gameWindow.gameWindowUI import GameWindowUI
 from ui.openGLWidget import OpenGLWidget
 
@@ -31,6 +32,20 @@ class GameWindow(QWidget):
         # Conectar botón salir de la sidebar
         self.ui.gameSideBar.salir_clicked.connect(self._salir)
 
+        # FPS tracking
+        self._fps_frame_count = 0
+        self._fps_last_time = 0.0
+        self._fps_label = QLabel("FPS: --", self.ui.openglContainer)
+        self._fps_label.setObjectName("fpsOverlay")
+        self._fps_label.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        self._fps_label.setStyleSheet(
+            "background-color: rgba(0, 0, 0, 160); color: #2ecc71;"
+            "font-size: 13px; font-weight: bold; padding: 2px 8px;"
+            "border-bottom-right-radius: 6px;"
+        )
+        self._fps_label.move(0, 0)
+        self._fps_label.hide()
+
     def _recreate_game_widget(self):
         """Destruye el OpenGLWidget actual y crea uno nuevo con contexto GL limpio.
 
@@ -52,8 +67,16 @@ class GameWindow(QWidget):
         if self._pending_state and self.game_widget.initialized and self.game_widget.core:
             state = self._pending_state
             self._pending_state = None
-            # Dar un frame de margen para que el core esté completamente inicializado
             QTimer.singleShot(32, lambda: self._restore_state(state))
+        self._fps_frame_count += 1
+        now = time.perf_counter()
+        elapsed = now - self._fps_last_time
+        if elapsed >= 0.5:
+            fps = self._fps_frame_count / elapsed
+            self._fps_label.setText(f"FPS: {fps:.1f}")
+            self._fps_label.adjustSize()
+            self._fps_frame_count = 0
+            self._fps_last_time = now
         self.game_widget.update()
 
     def _restore_state(self, state_data):
@@ -73,13 +96,19 @@ class GameWindow(QWidget):
     def load_game(self, juego, core_options_extra=None):
         """Carga un juego: recrea el contexto GL y arranca el timer."""
         self.timer.stop()
-        self._recreate_game_widget()              # contexto GL limpio para cada juego
+        self._recreate_game_widget()
         self._juego_actual = juego
         self.ui.gameSideBar.set_consola(juego.extension)
         if core_options_extra:
             self.game_widget.core_options_extra = core_options_extra
         self.game_widget.load_game(juego.ruta_core, juego.ruta_juego)
         self.game_widget.setFocus()
+        self._fps_frame_count = 0
+        self._fps_last_time = time.perf_counter()
+        self._fps_label.setText("FPS: --")
+        self._fps_label.adjustSize()
+        self._fps_label.show()
+        self._fps_label.raise_()
         if not self.timer.isActive():
             self.timer.start(16)
 
@@ -116,6 +145,7 @@ class GameWindow(QWidget):
     def unload_game(self):
         """Descarga el juego actual y para el timer."""
         self.timer.stop()
+        self._fps_label.hide()
         self._juego_actual = None
         self._pending_state = None
         self.game_widget.unload_game()
