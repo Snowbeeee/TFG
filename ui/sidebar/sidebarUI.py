@@ -118,7 +118,7 @@ class SidebarUI(QFrame):
 
     def _setup_ui(self):
         main_layout = QVBoxLayout(self)
-        main_layout.setContentsMargins(0, 0, 2, 0)
+        main_layout.setContentsMargins(0, 0, 4, 0)
         main_layout.setSpacing(0)
 
         # Fila superior: "Todos los juegos" + botón "+"
