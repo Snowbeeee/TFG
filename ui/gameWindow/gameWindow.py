@@ -1,7 +1,5 @@
-import os
 import time
 
-import psutil
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel
 from PyQt6.QtCore import Qt, QTimer, pyqtSignal
 from ui.gameWindow.gameWindowUI import GameWindowUI
@@ -38,7 +36,6 @@ class GameWindow(QWidget):
         # Performance tracking
         self._fps_frame_count = 0
         self._fps_last_time = 0.0
-        self._process = psutil.Process(os.getpid())
 
         _overlay_style = (
             "background-color: rgba(0, 0, 0, 160);"
@@ -52,12 +49,6 @@ class GameWindow(QWidget):
         )
         self._fps_label.move(0, 0)
         self._fps_label.hide()
-
-        self._ram_label = QLabel("RAM: --", self.ui.openglContainer)
-        self._ram_label.setObjectName("ramOverlay")
-        self._ram_label.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
-        self._ram_label.setStyleSheet(_overlay_style + "color: #3498db;")
-        self._ram_label.hide()
 
     def _recreate_game_widget(self):
         """Destruye el OpenGLWidget actual y crea uno nuevo con contexto GL limpio.
@@ -88,18 +79,6 @@ class GameWindow(QWidget):
             fps = self._fps_frame_count / elapsed
             self._fps_label.setText(f"FPS: {fps:.1f}")
             self._fps_label.adjustSize()
-
-            mem = self._process.memory_info().rss
-            if mem >= 1024 ** 3:
-                self._ram_label.setText(f"RAM: {mem / (1024**3):.2f} GB")
-            else:
-                self._ram_label.setText(f"RAM: {mem / (1024**2):.1f} MB")
-            self._ram_label.adjustSize()
-
-            # Stack labels vertically
-            y = self._fps_label.height()
-            self._ram_label.move(0, y)
-            y += self._ram_label.height()
 
             self._fps_frame_count = 0
             self._fps_last_time = now
@@ -133,11 +112,8 @@ class GameWindow(QWidget):
         self._fps_last_time = time.perf_counter() # primer muestreo (descartado)
         self._fps_label.setText("FPS: --")
         self._fps_label.adjustSize()
-        self._ram_label.setText("RAM: --")
-        self._ram_label.adjustSize()
-        for lbl in (self._fps_label, self._ram_label):
-            lbl.show()
-            lbl.raise_()
+        self._fps_label.show()
+        self._fps_label.raise_()
         if not self.timer.isActive():
             self.timer.start(16)
 
@@ -175,7 +151,6 @@ class GameWindow(QWidget):
         """Descarga el juego actual y para el timer."""
         self.timer.stop()
         self._fps_label.hide()
-        self._ram_label.hide()
         self._juego_actual = None
         self._pending_state = None
         self.game_widget.unload_game()
