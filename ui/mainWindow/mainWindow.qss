@@ -41,6 +41,7 @@ QFrame#gameCard {
 
 QFrame#gameCard:hover {
     border: 2px solid #3498db;
+    background-color: #3d566e;
 }
 
 /* Imagen placeholder en la carta */
@@ -55,40 +56,6 @@ QLabel#gameCardImage {
 QLabel#gameCardConsole {
     color: #95a5a6;
     font-size: 11px;
-}
-
-/* Botón Jugar en la carta */
-QPushButton#gameCardButton {
-    background-color: #2ecc71;
-    color: #ffffff;
-    font-size: 14px;
-    font-weight: bold;
-    padding: 8px;
-    border-radius: 6px;
-    border: none;
-}
-
-QPushButton#gameCardButton:hover {
-    background-color: #27ae60;
-}
-
-QPushButton#gameCardButton:pressed {
-    background-color: #1e8449;
-}
-
-/* Botón ⋯ en las cartas */
-QPushButton#gameCardMenuBtn {
-    background-color: #4a6278;
-    color: #ecf0f1;
-    font-size: 16px;
-    font-weight: bold;
-    padding: 8px;
-    border-radius: 6px;
-    border: none;
-}
-
-QPushButton#gameCardMenuBtn:hover {
-    background-color: #5a7a94;
 }
 
 /* Menú contextual de las cartas */

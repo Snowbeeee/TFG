@@ -89,10 +89,11 @@ class _ListaSeccion(QWidget):
             btn.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
             btn.setCursor(Qt.CursorShape.PointingHandCursor)
             btn.setProperty("nombre_archivo", juego.nombre_archivo)
-            # Icono del juego
-            if juego.imagen and os.path.isfile(juego.imagen):
-                btn.setIcon(QIcon(QPixmap(juego.imagen)))
-                btn.setIconSize(QSize(16, 16))
+            # Icono de la ROM (no la portada de la API)
+            icono = juego.imagen_rom if hasattr(juego, 'imagen_rom') and juego.imagen_rom else juego.imagen
+            if icono and os.path.isfile(icono):
+                btn.setIcon(QIcon(QPixmap(icono)))
+                btn.setIconSize(QSize(28, 28))
             btn.clicked.connect(lambda checked, na=juego.nombre_archivo: self.juego_clicked.emit(na))
             self.items_layout.addWidget(btn)
             self._items.append(btn)

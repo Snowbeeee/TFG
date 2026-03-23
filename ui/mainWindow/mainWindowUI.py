@@ -12,6 +12,16 @@ from ui.sidebar.sidebarUI import SidebarUI
 from lista import Lista, SIN_LISTA
 
 
+class ClickableFrame(QFrame):
+    """QFrame que emite una señal clicked al hacer clic."""
+    clicked = pyqtSignal()
+
+    def mousePressEvent(self, event):
+        if event.button() == Qt.MouseButton.LeftButton:
+            self.clicked.emit()
+        super().mousePressEvent(event)
+
+
 class MainWindowUI:
     """UI principal: contiene un QStackedWidget para navegar entre páginas."""
 
@@ -101,10 +111,11 @@ class MainWindowUI:
     # ------------------------------------------------------------------
 
     def crear_carta(self, juego):
-        """Crea un widget 'carta' para un juego y lo devuelve junto a su botón Jugar."""
-        carta = QFrame()
+        """Crea un widget 'carta' con imagen y nombre editable."""
+        carta = ClickableFrame()
         carta.setObjectName("gameCard")
         carta.setFixedSize(220, 300)
+        carta.setCursor(Qt.CursorShape.PointingHandCursor)
         carta.setProperty("nombre_archivo", juego.nombre_archivo)
 
         layout = QVBoxLayout(carta)
@@ -114,12 +125,12 @@ class MainWindowUI:
         # Imagen (placeholder si no hay carátula)
         imagen_label = QLabel()
         imagen_label.setObjectName("gameCardImage")
-        imagen_label.setFixedSize(200, 160)
+        imagen_label.setFixedSize(200, 200)
         imagen_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         if juego.imagen and os.path.exists(juego.imagen):
             pixmap = QPixmap(juego.imagen).scaled(
-                200, 160,
+                200, 200,
                 Qt.AspectRatioMode.KeepAspectRatio,
                 Qt.TransformationMode.SmoothTransformation
             )
@@ -133,31 +144,9 @@ class MainWindowUI:
         nombre_label = EditableLabel(juego.titulo)
         layout.addWidget(nombre_label)
 
-        # Consola
-        consola_label = QLabel(juego.consola)
-        consola_label.setObjectName("gameCardConsole")
-        consola_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        layout.addWidget(consola_label)
-
         layout.addStretch()
 
-        # Fila inferior: botón jugar + menú "⋯"
-        bottom_row = QHBoxLayout()
-        bottom_row.setSpacing(6)
-
-        btn_jugar = QPushButton("Jugar")
-        btn_jugar.setObjectName("gameCardButton")
-        bottom_row.addWidget(btn_jugar)
-
-        btn_menu = QPushButton("⋯")
-        btn_menu.setObjectName("gameCardMenuBtn")
-        btn_menu.setFixedWidth(36)
-        btn_menu.setCursor(Qt.CursorShape.PointingHandCursor)
-        bottom_row.addWidget(btn_menu)
-
-        layout.addLayout(bottom_row)
-
-        return carta, btn_jugar, nombre_label, btn_menu
+        return carta, nombre_label
 
     # Ancho fijo de cada carta + spacing del grid
     CARD_WIDTH = 220
@@ -219,10 +208,9 @@ class MainWindowUI:
         Si filtro_lista es None (vista 'Todos'), muestra una carta por cada carpeta
         con juegos y las cartas de los juegos sin carpeta asignada.
         Si filtro_lista es un nombre de lista, solo muestra los juegos de esa lista.
-        Devuelve (botones_juego, labels_juego, menus_juego, botones_carpeta, botones_borrar_carpeta) donde:
-          botones_juego          = {QPushButton: Juego}
+        Devuelve (cartas_juego, labels_juego, botones_carpeta, botones_borrar_carpeta) donde:
+          cartas_juego           = {ClickableFrame: Juego}
           labels_juego           = {EditableLabel: Juego}
-          menus_juego            = {QPushButton: Juego}
           botones_carpeta        = {QPushButton: nombre_lista}
           botones_borrar_carpeta = {QPushButton: nombre_lista}
         """
@@ -237,9 +225,8 @@ class MainWindowUI:
             if item.widget():
                 item.widget().deleteLater()
 
-        botones = {}
+        cartas_juego = {}
         labels = {}
-        menus = {}
         carpetas = {}
         borrar_carpetas = {}
 
@@ -247,11 +234,10 @@ class MainWindowUI:
             # Filtro activo: mostrar solo los juegos de esa lista
             juegos_visibles = Lista.obtener_juegos_de_lista(filtro_lista, juegos)
             for juego in juegos_visibles:
-                carta, btn, lbl, btn_menu = self.crear_carta(juego)
+                carta, lbl = self.crear_carta(juego)
                 self._cartas.append(carta)
-                botones[btn] = juego
+                cartas_juego[carta] = juego
                 labels[lbl] = juego
-                menus[btn_menu] = juego
         else:
             # Sin filtro: una carta por cada carpeta + juegos sin carpeta
             for nombre_lista in Lista.obtener_nombres():
@@ -264,16 +250,15 @@ class MainWindowUI:
             # Juegos sin carpeta asignada
             juegos_sin_lista = Lista.obtener_juegos_de_lista(SIN_LISTA, juegos)
             for juego in juegos_sin_lista:
-                carta, btn, lbl, btn_menu = self.crear_carta(juego)
+                carta, lbl = self.crear_carta(juego)
                 self._cartas.append(carta)
-                botones[btn] = juego
+                cartas_juego[carta] = juego
                 labels[lbl] = juego
-                menus[btn_menu] = juego
 
         # Posicionar con las columnas que quepan ahora
         self._reflow_grid()
 
-        return botones, labels, menus, carpetas, borrar_carpetas
+        return cartas_juego, labels, carpetas, borrar_carpetas
 
     def _calcular_columnas(self):
         """Calcula cuántas columnas caben según el ancho del scrollArea."""

@@ -27,6 +27,10 @@ class EditableLabel(QWidget):
         self.line_edit.returnPressed.connect(self._confirmar)
         self.line_edit.editingFinished.connect(self._confirmar)
 
+    def mousePressEvent(self, event):
+        # Consumir clic simple para que no se propague a la carta padre
+        event.accept()
+
     def mouseDoubleClickEvent(self, event):
         self.line_edit.setText(self.label.text())
         self.label.hide()

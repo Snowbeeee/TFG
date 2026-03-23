@@ -268,6 +268,7 @@ class Juego:
         self.consola = self._detectar_consola()
         self.ruta_core = self._detectar_core(ruta_cores)
         self.imagen = None  # Ruta a la carátula (de momento None)
+        self.imagen_rom = None  # Icono extraído de la ROM (siempre se conserva)
 
     @property
     def titulo(self):
@@ -389,7 +390,9 @@ class Juego:
             if ext in EXTENSIONES_VALIDAS:
                 ruta_completa = os.path.join(ruta_games, archivo)
                 juego = Juego(ruta_completa, ruta_cores)
-                juego.imagen = _extraer_icono(juego)
+                icono = _extraer_icono(juego)
+                juego.imagen = icono
+                juego.imagen_rom = icono
                 juegos.append(juego)
         return juegos
 

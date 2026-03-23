@@ -1,4 +1,5 @@
 import os
+import json
 from PyQt6.QtWidgets import QMainWindow, QMenu
 from PyQt6.QtCore import QFileSystemWatcher
 from ui.mainWindow.mainWindowUI import MainWindowUI
@@ -7,8 +8,10 @@ from ui.configWindow.configWindow import ConfigWindow
 from ui.controlsWindow.controlsWindow import ControlsWindow
 from ui.sidebar.sidebar import Sidebar
 from ui.popups.popupEliminar.popupEliminar import PopupEliminar
+from ui.gameDetailPage.gameDetailPage import GameDetailPage
 from game.juego import Juego, extraer_titulo_rom
 from lista import Lista, SIN_LISTA
+from api.screenscraper import ScreenScraperAPI, obtener_ruta_portada
 
 
 def _get_resource_path(relative_path):
@@ -36,14 +39,15 @@ class MainWindow(QMainWindow):
         # --- Declaración de todas las variables de instancia ---
         self.ui = None
         self.juegos = []
-        self.botones_juego = {}
+        self.cartas_juego = {}
         self.labels_juego = {}
-        self.menus_juego = {}
         self.botones_carpeta = {}
         self.botones_borrar_carpeta = {}
         self.game_page = None
         self.config_page = None
         self.controls_page = None
+        self.detail_page = None
+        self.scraper_api = None
 
         self.sidebar = None
         self._ruta_games = None
@@ -76,8 +80,14 @@ class MainWindow(QMainWindow):
         ruta_cores = os.path.join(base, "cores")
         self.juegos = Juego.escanear_juegos(ruta_games, ruta_cores)
 
-        # Poblar el grid con cartas y conectar cada botón
-        self.botones_juego, self.labels_juego, self.menus_juego, self.botones_carpeta, self.botones_borrar_carpeta = self.ui.poblar_grid(self.juegos)
+        # Usar portadas cacheadas como imagen de la carta
+        for juego in self.juegos:
+            portada = obtener_ruta_portada(ruta_games, juego.nombre_archivo)
+            if portada:
+                juego.imagen = portada
+
+        # Poblar el grid con cartas y conectar
+        self.cartas_juego, self.labels_juego, self.botones_carpeta, self.botones_borrar_carpeta = self.ui.poblar_grid(self.juegos)
         self._conectar_cartas()
 
         # Crear controlador de la sidebar y conectar señales
@@ -107,6 +117,27 @@ class MainWindow(QMainWindow):
         self.game_page = GameWindow()
         self.ui.stackedWidget.addWidget(self.game_page)  # index 3
         self.game_page.salir_signal.connect(self._volver_menu)
+
+        # ScreenScraper API
+        config_path = os.path.join(base, "config.json")
+        ss_devid, ss_devpassword = "", ""
+        if os.path.exists(config_path):
+            try:
+                with open(config_path, "r", encoding="utf-8") as f:
+                    cfg = json.load(f)
+                ss_devid = cfg.get("screenscraper_devid", "")
+                ss_devpassword = cfg.get("screenscraper_devpassword", "")
+            except Exception:
+                pass
+        self.scraper_api = ScreenScraperAPI(
+            devid=ss_devid, devpassword=ss_devpassword
+        )
+
+        # Página de detalle del juego
+        self.detail_page = GameDetailPage(self.scraper_api, ruta_games)
+        self.ui.stackedWidget.addWidget(self.detail_page)  # index 4
+        self.detail_page.jugar_signal.connect(self._jugar)
+        self.detail_page.volver_signal.connect(self._volver_menu)
 
         # Sincronizar game sidebar → config page
         self.game_page.sidebar.volumen_cambiado.connect(self._on_game_sidebar_volume)
@@ -170,7 +201,11 @@ class MainWindow(QMainWindow):
         Juego.migrar_renombrados(self._ruta_games, self._archivos_actuales, archivos_nuevos)
         self._archivos_actuales = archivos_nuevos
         self.juegos = Juego.escanear_juegos(self._ruta_games, self._ruta_cores)
-        self.botones_juego, self.labels_juego, self.menus_juego, self.botones_carpeta, self.botones_borrar_carpeta = self.ui.poblar_grid(
+        for juego in self.juegos:
+            portada = obtener_ruta_portada(self._ruta_games, juego.nombre_archivo)
+            if portada:
+                juego.imagen = portada
+        self.cartas_juego, self.labels_juego, self.botones_carpeta, self.botones_borrar_carpeta = self.ui.poblar_grid(
             self.juegos, self._filtro_lista_actual
         )
         self._conectar_cartas()
@@ -181,6 +216,11 @@ class MainWindow(QMainWindow):
         self.ui.header.show()
         self.ui.header.set_active(0)
         self.ui.stackedWidget.setCurrentIndex(0)
+        # Refrescar el grid por si se descargaron portadas nuevas
+        self.cartas_juego, self.labels_juego, self.botones_carpeta, self.botones_borrar_carpeta = self.ui.poblar_grid(
+            self.juegos, self._filtro_lista_actual
+        )
+        self._conectar_cartas()
 
     def _navegar(self, index):
         """Cambia entre páginas del stacked widget (0=Biblioteca, 1=Config)."""
@@ -283,13 +323,11 @@ class MainWindow(QMainWindow):
     # ------------------------------------------------------------------
 
     def _conectar_cartas(self):
-        """Conecta botones, labels y menús de las cartas del grid."""
-        for btn, juego in self.botones_juego.items():
-            btn.clicked.connect(lambda checked, j=juego: self._jugar(j))
+        """Conecta cartas clickables y labels editables del grid."""
+        for carta, juego in self.cartas_juego.items():
+            carta.clicked.connect(lambda j=juego: self._mostrar_detalle(j))
         for lbl, juego in self.labels_juego.items():
             lbl.texto_cambiado.connect(lambda texto, j=juego: self._renombrar_juego(j, texto))
-        for btn_menu, juego in self.menus_juego.items():
-            btn_menu.clicked.connect(lambda checked, b=btn_menu, j=juego: self._mostrar_menu_carta(b, j))
         for btn, nombre_lista in self.botones_carpeta.items():
             btn.clicked.connect(lambda checked, nl=nombre_lista: self._filtrar_por_lista(nl))
         for btn, nombre_lista in self.botones_borrar_carpeta.items():
@@ -302,7 +340,7 @@ class MainWindow(QMainWindow):
     def _filtrar_por_lista(self, nombre_lista):
         """Filtra las cartas del grid por la lista seleccionada."""
         self._filtro_lista_actual = nombre_lista
-        self.botones_juego, self.labels_juego, self.menus_juego, self.botones_carpeta, self.botones_borrar_carpeta = self.ui.poblar_grid(
+        self.cartas_juego, self.labels_juego, self.botones_carpeta, self.botones_borrar_carpeta = self.ui.poblar_grid(
             self.juegos, nombre_lista
         )
         self._conectar_cartas()
@@ -310,36 +348,20 @@ class MainWindow(QMainWindow):
     def _mostrar_todos(self):
         """Muestra todos los juegos (sin filtro de lista)."""
         self._filtro_lista_actual = None
-        self.botones_juego, self.labels_juego, self.menus_juego, self.botones_carpeta, self.botones_borrar_carpeta = self.ui.poblar_grid(self.juegos)
+        self.cartas_juego, self.labels_juego, self.botones_carpeta, self.botones_borrar_carpeta = self.ui.poblar_grid(self.juegos)
         self._conectar_cartas()
         self._poblar_sidebar()
 
-    def _mostrar_menu_carta(self, btn_menu, juego):
-        """Muestra el menú contextual con opciones de lista para una carta."""
-        menu = QMenu(self)
-        menu.setObjectName("cardContextMenu")
-
-        lista_actual = juego.lista
-        todas = Lista.obtener_todas_con_sin_lista()
-
-        for nombre_lista in todas:
-            accion = menu.addAction(nombre_lista)
-            accion.setCheckable(True)
-            accion.setChecked(
-                (nombre_lista == SIN_LISTA and lista_actual is None)
-                or nombre_lista == lista_actual
-            )
-            accion.triggered.connect(
-                lambda checked, nl=nombre_lista, j=juego: self._asignar_lista(j, nl)
-            )
-
-        menu.exec(btn_menu.mapToGlobal(btn_menu.rect().bottomLeft()))
+    def _mostrar_detalle(self, juego):
+        """Abre la página de detalle de un juego."""
+        self.detail_page.mostrar_juego(juego)
+        self.ui.stackedWidget.setCurrentWidget(self.detail_page)
 
     def _asignar_lista(self, juego, nombre_lista):
         """Asigna un juego a una lista y refresca la UI."""
         juego.lista = nombre_lista
         # Refrescar grid y sidebar
-        self.botones_juego, self.labels_juego, self.menus_juego, self.botones_carpeta, self.botones_borrar_carpeta = self.ui.poblar_grid(
+        self.cartas_juego, self.labels_juego, self.botones_carpeta, self.botones_borrar_carpeta = self.ui.poblar_grid(
             self.juegos, self._filtro_lista_actual
         )
         self._conectar_cartas()
@@ -353,10 +375,10 @@ class MainWindow(QMainWindow):
             self._mostrar_todos()
 
     def _on_sidebar_juego_clicked(self, nombre_archivo):
-        """Cuando se clica un juego en la sidebar, carga ese juego directamente."""
+        """Cuando se clica un juego en la sidebar, abre su página de detalle."""
         for juego in self.juegos:
             if juego.nombre_archivo == nombre_archivo:
-                self._jugar(juego)
+                self._mostrar_detalle(juego)
                 return
 
     def showEvent(self, event):

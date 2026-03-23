@@ -3,6 +3,8 @@
   "ds_renderer_index": 1,
   "ds_resolution_index": 2,
   "citra_resolution_index": 2,
+  "screenscraper_devid": "Snowbe",
+  "screenscraper_devpassword": "WDPeqVq3GeQ",
   "controls_ds": {
     "a": {
       "type": "gamepad_button",
