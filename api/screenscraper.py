@@ -16,9 +16,10 @@ SYSTEM_IDS = {
 CACHE_DIR_NAME = "scraper_cache" 
 CACHE_INFO_FILE = "info.json"
 
-
+# Clase principal para interactuar con la API de ScreenScraper, 
+# incluyendo métodos para buscar juegos por hash o nombre, descargar imágenes 
+# y manejar la caché local.
 class ScreenScraperAPI:
-    """Cliente para la API v2 de ScreenScraper."""
 
     BASE_URL = "https://api.screenscraper.fr/api2"
 
@@ -39,9 +40,9 @@ class ScreenScraperAPI:
             params.update(extra)
         return params
 
-    # LLamada a la API, busqueda por hash del contenodo del fichero ROM
+    # LLamada a la API (concretamente a jeuInfos.php), busqueda por hash del 
+    # contenodo del fichero ROM 
     def buscar_por_hash(self, ruta_rom, extension):
-        """Identifica un juego por CRC32/MD5/SHA1 del fichero ROM (jeuInfos.php)."""
         if not os.path.isfile(ruta_rom):
             return None
 
@@ -121,6 +122,7 @@ class ScreenScraperAPI:
 
         return self._parsear_respuesta_hash_un_juego(datos_respuesta)
 
+    # El endpoint de búsqueda por hash (jeuInfos.php) devuelve un solo juego, esta función parsea ese juego.
     def _parsear_respuesta_hash_un_juego(self, datos_respuesta):
         """Parsea la respuesta de jeuInfos.php (un solo juego, no una lista)."""
         try:
@@ -157,7 +159,6 @@ class ScreenScraperAPI:
 
     # Llamada a la API, busqueda por nombre del juego
     def buscar_por_nombre(self, nombre, extension=None):
-        """Busca un juego por nombre y devuelve info estructurada del primer resultado."""
         # Parametros extra para la llamada a la API de la busqueda por nombre
         extra = {"recherche": nombre}
         
@@ -198,8 +199,9 @@ class ScreenScraperAPI:
 
         return self._parsear_respuesta_nombre_varios_juegos(datos_respuesta)
 
+    # El endpoint de búsqueda por nombre (en este caso jeuRecherche.php) devuelve una lista de juegos, 
+    # esta función parsea esa lista y devuelve la info del primer juego (si hay resultados)
     def _parsear_respuesta_nombre_varios_juegos(self, datos_respuesta):
-        """Parsea la respuesta de jeuRecherche.php (lista de juegos, se usa el primero)."""
         try:
             jeux = datos_respuesta.get("response", {}).get("jeux", [])
             if not jeux:
@@ -230,21 +232,28 @@ class ScreenScraperAPI:
             print(f"[ScreenScraper] Error parseando: {error}")
             return None
 
+    # Descarga imagenes de la API, dada la URL y la ruta destino local donde guardarla
     @staticmethod
     def descargar_imagen(url, ruta_destino):
-        """Descarga una imagen desde la URL al destino local."""
         try:
             os.makedirs(os.path.dirname(ruta_destino), exist_ok=True)
+            
             request = urllib.request.Request(url, headers={"User-Agent": "TFG-Emulador"})
+            
             with urllib.request.urlopen(request, timeout=30) as respuesta:
+
                 contenido = respuesta.read()
+
                 # La API devuelve texto si no hay media
                 if len(contenido) < 100:
                     texto = contenido.decode("utf-8", errors="ignore").strip()
+
                     if texto in ("CRCOK", "MD5OK", "SHA1OK", "NOMEDIA"):
                         return False
+                    
                 with open(ruta_destino, 'wb') as archivo:
                     archivo.write(contenido)
+            
             return True
         except Exception as error:
             print(f"[ScreenScraper] Error descargando: {error}")
@@ -253,31 +262,39 @@ class ScreenScraperAPI:
 
 # ── Helpers de parseo ──
 
+# Devuelve un texto de forma segura, manejando casos donde 
+# el valor puede ser un dict con "text" o un string directo, o incluso None.
 def _safe(valor):
     if isinstance(valor, dict):
         return valor.get("text", "")
+    
     return str(valor) if valor else ""
 
-
+# Esta funcion maneja la extracción de textos segun la región o idioma preferido, 
+# tanto si los datos vienen como una lista de dicts o un dict con claves regionales
 def _texto_regional(datos, clave, preferencias):
-    """Extrae un texto de una lista de dicts con preferencia de región/idioma."""
     if not datos:
         return ""
+    
     if isinstance(datos, list):
         for preferencia in preferencias:
             for item in datos:
                 if isinstance(item, dict) and item.get(clave) == preferencia:
                     return item.get("text", "")
+                
         if datos and isinstance(datos[0], dict):
             return datos[0].get("text", "")
+        
     elif isinstance(datos, dict):
         for preferencia in preferencias:
             for nombre_campo, valor_campo in datos.items():
                 if nombre_campo.endswith(f"_{preferencia}"):
                     return valor_campo if isinstance(valor_campo, str) else ""
+                
     return ""
 
-
+# Extrae una lista de géneros a partir de la sección "genres" de la API, 
+# manejando distintos formatos posibles
 def _generos(datos_generos):
     resultado = []
     if isinstance(datos_generos, list):
@@ -291,8 +308,8 @@ def _generos(datos_generos):
     return resultado
 
 
+# Esta función maneja la extracción de URLs de medios, clasificando portadas y galerías,
 def _medias(datos_medias):
-    """Extrae URLs de medias, separando portada del resto."""
     resultado = {"portada_url": None, "imagenes": []}
     if isinstance(datos_medias, list):
         for media in datos_medias:
@@ -303,7 +320,7 @@ def _medias(datos_medias):
         _recorrer(datos_medias, resultado)
     return resultado
 
-
+# Clasifica una URL de media como portada o imagen de galería según su tipo y región,
 def _clasificar(resultado_medias, tipo, url, region):
     if not url:
         return
@@ -320,8 +337,9 @@ def _clasificar(resultado_medias, tipo, url, region):
         resultado_medias["imagenes"].append({"url": url, "type": tipo, "region": region})
 
 
+# Recorre recursivamente un dict de medias extrayendo URLs, 
+# ignorando secciones de boitiers (fotos de caratulas de la caja fisica de juegos) (texture, 2d, 3d)
 def _recorrer(diccionario_medias, resultado_medias):
-    """Recorre recursivamente un dict de medias extrayendo URLs."""
     for clave, valor in diccionario_medias.items():
         # Ignorar secciones de boitiers (texture, 2d, 3d)
         if "boitier" in clave.lower():
@@ -340,39 +358,45 @@ def _recorrer(diccionario_medias, resultado_medias):
 
 # ── Cache ──
 
+# Esta funcion devuelve el directorio de caché para un juego concreto, 
+# basado en la ruta de los juegos y el nombre del archivo ROM,
 def obtener_cache_dir(ruta_games, nombre_archivo):
-    """Directorio de caché para un juego concreto."""
     base = os.path.splitext(nombre_archivo)[0]
     return os.path.join(ruta_games, CACHE_DIR_NAME, base)
 
-
+# Carga la info cacheada de un juego, o None si no existe o está vacía.
 def cargar_info_cache(ruta_games, nombre_archivo):
-    """Carga la info cacheada de un juego, o None si no existe o está vacía."""
     ruta_cache = os.path.join(obtener_cache_dir(ruta_games, nombre_archivo), CACHE_INFO_FILE)
     if os.path.exists(ruta_cache):
         try:
             with open(ruta_cache, "r", encoding="utf-8") as archivo:
                 datos = json.load(archivo)
+
             # Descartar cachés vacías (sin id ni título)
+            # Esto significa que la API no devolvió nada
             if not datos.get("id") and not datos.get("titulo"):
                 os.remove(ruta_cache)
                 return None
+            
             return datos
         except Exception:
             pass
     return None
 
 
+ # Guarda la info de un juego en la caché, incluyendo la descarga de 
+ # imágenes a partir de las URLs obtenidas de la API.
 def guardar_info_cache(ruta_games, nombre_archivo, info):
-    """Guarda la info de un juego en la caché."""
     directorio = obtener_cache_dir(ruta_games, nombre_archivo)
     os.makedirs(directorio, exist_ok=True)
     with open(os.path.join(directorio, CACHE_INFO_FILE), "w", encoding="utf-8") as archivo:
         json.dump(info, archivo, ensure_ascii=False, indent=2)
 
 
+# Esta funcion obtiene la ruta de la portada 
+# (que siempre se guarda con el nombre "cover" seguido de su extensión) 
+# dada la ruta de los juegos y el nombre del archivo ROM
 def obtener_ruta_portada(ruta_games, nombre_archivo):
-    """Devuelve la ruta a la portada cacheada, o None."""
     directorio = obtener_cache_dir(ruta_games, nombre_archivo)
     for extension in (".png", ".jpg", ".jpeg"):
         ruta = os.path.join(directorio, f"cover{extension}")
@@ -381,8 +405,10 @@ def obtener_ruta_portada(ruta_games, nombre_archivo):
     return None
 
 
+# Esta función devuelve una lista de rutas a las imágenes de galería cacheadas,
+# excluyendo la portada, dada la ruta de los juegos y el nombre del archivo ROM
+# dada la ruta de los juegos y el nombre del archivo ROM. 
 def obtener_rutas_galeria(ruta_games, nombre_archivo):
-    """Devuelve las rutas de las imágenes de galería (excluyendo portada)."""
     directorio = obtener_cache_dir(ruta_games, nombre_archivo)
     rutas = []
     if os.path.isdir(directorio):
