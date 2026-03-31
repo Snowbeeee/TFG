@@ -1,9 +1,9 @@
-import ctypes
+import ctypes       # Permite interactuar con librerías en C/C++ (.dll/.so) desde Python
 import os
 import sys
-from libretro.retro_definitions import *
-from OpenGL.GL import *
-from OpenGL.GL.framebufferobjects import *
+from libretro.retro_definitions import *       # Constantes y estructuras C de la API Libretro
+from OpenGL.GL import *                        # Funciones de OpenGL para renderizado gráfico
+from OpenGL.GL.framebufferobjects import *     # Soporte para Framebuffer Objects (FBO) de OpenGL
 
 # Variables globales para acceder a la instancia desde los callbacks de C
 # Variable global que mantiene una referencia a la instancia actual del núcleo (RetroCore).
@@ -23,12 +23,16 @@ def get_current_framebuffer_callback():
 _gl_lib = None
 _wgl_get_proc = None
 
+# Solo se ejecuta en Windows (os.name == 'nt')
 if os.name == 'nt':
     try:
+        # Cargar la DLL del sistema de OpenGL (opengl32.dll)
         _gl_lib = ctypes.windll.opengl32
+        # Obtener referencia a wglGetProcAddress, función de Windows para
+        # resolver extensiones de OpenGL en tiempo de ejecución
         _wgl_get_proc = _gl_lib.wglGetProcAddress
-        _wgl_get_proc.restype = ctypes.c_void_p
-        _wgl_get_proc.argtypes = [ctypes.c_char_p]
+        _wgl_get_proc.restype = ctypes.c_void_p      # Devuelve un puntero genérico
+        _wgl_get_proc.argtypes = [ctypes.c_char_p]    # Recibe el nombre de la función como cadena C
     except Exception as e:
         print(f"Error cargando OpenGL lib: {e}")
         
@@ -116,43 +120,44 @@ class RetroCore:
         _current_core = self
 
         # --- Declaración de todas las variables de instancia ---
-        self.lib_path = lib_path
-        self.audio_manager = audio_manager
-        self.input_manager = input_manager
-        self.lib = None
-        self.context_reset_cb = None
-        self._hw_refs = []
-        self.video_cb = None
-        self.env_cb = None
-        self.audio_sample_cb = None
-        self.audio_batch_cb = None
-        self.input_poll_cb = None
-        self.input_state_cb = None
-        self.log_cb = None
-        self.aspect_ratio = 0.0
-        self.base_width = 0
-        self.base_height = 0
-        self.fbo_id = 0
-        self.tex_id = 0
-        self.rbo_id = 0
-        self.view_rect = (0, 0, 1, 1)
-        self.hw_render_depth = False
-        self.hw_render_stencil = False
-        self.bottom_left_origin = True
-        self.last_win_size = (-1, -1)
-        self.pixel_format = RETRO_PIXEL_FORMAT_0RGB1555
-        self.fbo_width = 0
-        self.fbo_height = 0
-        self.target_fbo = None
-        self.save_path = None
-        self._option_refs = {}
-        self.core_options = {}
-        self._variable_updated = False
-        self.available_options = {}  # {key: {desc, values[], default}}
-        self._pending_sample_rate = 0         # sample rate pendiente de aplicar (SET_SYSTEM_AV_INFO)
-        self._current_sample_rate = 0         # sample rate actualmente inicializado
+        self.lib_path = lib_path                  # Ruta a la DLL del core
+        self.audio_manager = audio_manager        # Gestor de audio (PyAudio)
+        self.input_manager = input_manager        # Gestor de entrada (teclado/ratón)
+        self.lib = None                           # Referencia a la DLL cargada con ctypes
+        self.context_reset_cb = None              # Callback del core para reiniciar contexto GL
+        self._hw_refs = []                        # Referencias para evitar que el GC limpie los callbacks de HW
+        self.video_cb = None                      # Callback C de refresco de video
+        self.env_cb = None                        # Callback C de entorno
+        self.audio_sample_cb = None               # Callback C de muestra de audio individual
+        self.audio_batch_cb = None                # Callback C de lote de audio
+        self.input_poll_cb = None                 # Callback C de sondeo de entrada
+        self.input_state_cb = None                # Callback C de estado de entrada
+        self.log_cb = None                        # Callback C de log
+        self.aspect_ratio = 0.0                   # Relación de aspecto del juego
+        self.base_width = 0                       # Ancho base de la resolución del juego
+        self.base_height = 0                      # Alto base de la resolución del juego
+        self.fbo_id = 0                           # ID del Framebuffer Object de OpenGL
+        self.tex_id = 0                           # ID de la textura asociada al FBO
+        self.rbo_id = 0                           # ID del Renderbuffer (profundidad/stencil)
+        self.view_rect = (0, 0, 1, 1)             # Rectángulo de visualización (x, y, ancho, alto)
+        self.hw_render_depth = False              # Si el core necesita buffer de profundidad
+        self.hw_render_stencil = False            # Si el core necesita buffer de stencil
+        self.bottom_left_origin = True            # Origen de coordenadas del core (abajo-izquierda)
+        self.last_win_size = (-1, -1)             # Último tamaño de ventana conocido
+        self.pixel_format = RETRO_PIXEL_FORMAT_0RGB1555   # Formato de píxel actual
+        self.fbo_width = 0                        # Ancho actual del FBO
+        self.fbo_height = 0                       # Alto actual del FBO
+        self.target_fbo = None                    # FBO destino (para integración con Qt)
+        self.save_path = None                     # Ruta del archivo de guardado (SRAM)
+        self._option_refs = {}                    # Referencias a opciones para evitar limpieza del GC
+        self.core_options = {}                    # Opciones de configuración del core
+        self._variable_updated = False            # Flag: si alguna opción cambió desde la última consulta
+        self.available_options = {}               # Opciones disponibles del core {key: {desc, values[], default}}
+        self._pending_sample_rate = 0             # sample rate pendiente de aplicar (SET_SYSTEM_AV_INFO)
+        self._current_sample_rate = 0             # sample rate actualmente inicializado
 
         # --- Carga de la librería y configuración ---
+        # ctypes.CDLL carga la DLL del core como si fuera una librería C estándar
         self.lib = ctypes.CDLL(lib_path)
 
         # Diccionario de opciones del core (variables).
@@ -171,7 +176,9 @@ class RetroCore:
 
         print("Registrando input callbacks")
         
-        # Instanciar callbacks
+        # Instanciar los wrappers ctypes que convierten las funciones Python en punteros
+        # a función C compatibles. Cada tipo (c_video_refresh_t, etc) está definido 
+        # en retro_definitions.py con la firma exacta que espera la API Libretro.
         self.video_cb = c_video_refresh_t(video_refresh_thunk)
         self.env_cb = c_environment_t(environment_thunk)
         self.audio_sample_cb = c_audio_sample_t(audio_sample_thunk)
@@ -180,7 +187,8 @@ class RetroCore:
         self.input_state_cb = c_input_state_t(input_state_thunk)
         self.log_cb = c_log_printf_t(log_printf_thunk)
         
-        # Setup inicial del core
+        # Registrar cada callback en el core. Estas funciones de la API Libretro
+        # almacenan los punteros para llamarlos durante la emulación.
         self.lib.retro_set_environment(self.env_cb)
         self.lib.retro_set_video_refresh(self.video_cb)
         self.lib.retro_set_audio_sample(self.audio_sample_cb)
@@ -188,11 +196,14 @@ class RetroCore:
         self.lib.retro_set_input_poll(self.input_poll_cb)
         self.lib.retro_set_input_state(self.input_state_cb)
         
+        # Inicializar el core (equivalente a "encenderlo")
         self.lib.retro_init()
-        # Configurar puerto 0
+        # Configurar puerto 0 como mando estándar (joypad)
         self.lib.retro_set_controller_port_device(0, RETRO_DEVICE_JOYPAD)
         
-        # Configurar acceso a memoria (SRAM, RTC, etc)
+        # Configurar los tipos de retorno y argumentos para las funciones de acceso
+        # a la memoria del core (SRAM, RTC, etc). Esto es necesario porque ctypes
+        # por defecto asume que todas las funciones devuelven int.
         self.lib.retro_get_memory_data.restype = ctypes.c_void_p
         self.lib.retro_get_memory_data.argtypes = [ctypes.c_uint]
 
@@ -214,38 +225,46 @@ class RetroCore:
     # Inicializa o reinicializa el Framebuffer Object (FBO) de OpenGL.
     # Crea las texturas y buffers de profundidad/stencil necesarios según la resolución del juego.
     def init_framebuffer(self, width, height):
+        # Si ya existían recursos previos, liberarlos antes de crear nuevos
         if self.fbo_id:
             glDeleteFramebuffers(1, [self.fbo_id])
         if self.tex_id:
             glDeleteTextures(1, [self.tex_id])
         if self.rbo_id:
             glDeleteRenderbuffers(1, [self.rbo_id])
-            
-        self.fbo_id = int(glGenFramebuffers(1))
-        self.tex_id = int(glGenTextures(1))
+        
+        # Generar nuevos objetos de OpenGL    
+        self.fbo_id = int(glGenFramebuffers(1))     # Crear un nuevo Framebuffer
+        self.tex_id = int(glGenTextures(1))          # Crear una nueva textura para el color
         self.fbo_width = width
         self.fbo_height = height
         
+        # Vincular el FBO como destino de renderizado activo
         glBindFramebuffer(GL_FRAMEBUFFER, self.fbo_id)
         
-        # Texture attachment (Color)
+        # Crear y adjuntar la textura de color al FBO.
+        # Esta textura recibirá los píxeles renderizados por el core.
         glBindTexture(GL_TEXTURE_2D, self.tex_id)
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, None)
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)   # Filtrado bilineal al reducir
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)   # Filtrado bilineal al ampliar
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, self.tex_id, 0)
         
-        # Depth/Stencil attachment
+        # Adjuntar buffer de profundidad y/o stencil si el core los solicita.
+        # Algunos cores 3D (como Citra) necesitan depth/stencil para renderizar correctamente.
         if self.hw_render_depth or self.hw_render_stencil:
             self.rbo_id = int(glGenRenderbuffers(1))
             glBindRenderbuffer(GL_RENDERBUFFER, self.rbo_id)
             if self.hw_render_depth and self.hw_render_stencil:
+                # Formato combinado: 24 bits de profundidad + 8 bits de stencil
                 glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, width, height)
                 glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, self.rbo_id)
             elif self.hw_render_depth:
+                # Solo profundidad: 24 bits
                 glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, width, height)
                 glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, self.rbo_id)
-            
+        
+        # Verificar que el FBO esté completo y listo para usar
         status = glCheckFramebufferStatus(GL_FRAMEBUFFER)
         if status != GL_FRAMEBUFFER_COMPLETE:
             print(f"Error: Framebuffer incompleto (Status: {status})")
@@ -257,21 +276,25 @@ class RetroCore:
     def load_sram(self):
         if not self.save_path:
             return
-            
+        
+        # Obtener el tamaño de la zona de memoria SRAM del core    
         size = self.lib.retro_get_memory_size(RETRO_MEMORY_SAVE_RAM)
         if size == 0:
             return
-            
+        
+        # Si existe un archivo de guardado previo, leerlo y copiarlo a la memoria del core    
         if os.path.exists(self.save_path):
             with open(self.save_path, "rb") as f:
                 data = f.read()
+                # Truncar si el archivo es mayor que la memoria disponible del core
                 if len(data) > size:
                     print(f"Warning: Save file larger than core memory ({len(data)} > {size}). Truncating.")
                     data = data[:size]
                 
+                # Obtener el puntero a la zona de memoria SRAM del core
                 ptr = self.lib.retro_get_memory_data(RETRO_MEMORY_SAVE_RAM)
                 if ptr:
-                    # Copiar datos
+                    # Copiar los bytes del archivo directamente a la memoria del core
                     ctypes.memmove(ptr, data, len(data))
                     print(f"SRAM cargada desde {self.save_path}")
 
@@ -279,19 +302,21 @@ class RetroCore:
     def save_sram(self):
         if not self.save_path:
             return
-            
+        
+        # Obtener tamaño y puntero de la memoria SRAM del core    
         size = self.lib.retro_get_memory_size(RETRO_MEMORY_SAVE_RAM)
         ptr = self.lib.retro_get_memory_data(RETRO_MEMORY_SAVE_RAM)
         
         if size > 0 and ptr:
-            # Leer memoria
+            # Leer los bytes de la memoria del core como cadena de bytes
             data = ctypes.string_at(ptr, size)
             
-            # Verificar si el directorio saves existe
+            # Crear el directorio de guardado si no existe
             save_dir = os.path.dirname(self.save_path)
             if not os.path.exists(save_dir):
                 os.makedirs(save_dir)
-                
+            
+            # Escribir los datos al archivo de guardado    
             with open(self.save_path, "wb") as f:
                 f.write(data)
             print(f"SRAM guardada en {self.save_path}")
@@ -311,28 +336,34 @@ class RetroCore:
         else:
              self.save_path = os.path.abspath(os.path.join("saves", rom_name + ".sav"))
 
-        # Obtener info del sistema
+        # Obtener información del sistema (nombre del core, versión, si necesita ruta completa, etc.)
         self.lib.retro_get_system_info.argtypes = [ctypes.POINTER(RetroSystemInfo)]
         sys_info = RetroSystemInfo()
         self.lib.retro_get_system_info(ctypes.byref(sys_info))
         print(f"Core cargado: {sys_info.library_name.decode()} ({sys_info.library_version.decode()})")
         
+        # Preparar la estructura RetroGameInfo con la ruta y los datos del juego
         full_path = os.path.abspath(rom_path).encode('utf-8')
         game_info = RetroGameInfo()
         game_info.path = full_path
         game_info.meta = None
         
-        rom_data = None # Mantener referencia
+        rom_data = None # Mantener referencia para que el GC no libere los datos
         
+        # Si el core necesita la ruta completa (need_fullpath=True), no es necesario
+        # pasar los datos en memoria; el core abrirá el archivo por su cuenta.
+        # Si no, hay que leer el archivo y pasarlo como buffer.
         if sys_info.need_fullpath:
             game_info.data = None
             game_info.size = 0
         else:
             with open(rom_path, "rb") as f:
                 rom_data = f.read()
+            # Crear un buffer C con los datos de la ROM y convertirlo a puntero genérico
             game_info.data = ctypes.cast(ctypes.create_string_buffer(rom_data), ctypes.c_void_p)
             game_info.size = len(rom_data)
         
+        # Configurar tipos de la función y llamar a retro_load_game
         self.lib.retro_load_game.argtypes = [ctypes.POINTER(RetroGameInfo)]
         self.lib.retro_load_game.restype = ctypes.c_bool
         
@@ -342,21 +373,23 @@ class RetroCore:
             
         print("Juego cargado exitosamente.")
         
-        # Re-set controller port
+        # Reasignar mando tras la carga (algunos cores lo reinician)
         self.lib.retro_set_controller_port_device(0, RETRO_DEVICE_JOYPAD)
         
-        # AV Info — obtener ANTES de context_reset para que el FBO se cree
-        # al tamaño correcto antes de que el core intente usarlo.
+        # Obtener información de Audio/Vídeo del core.
+        # Se obtiene ANTES de context_reset para crear el FBO al tamaño correcto.
         self.lib.retro_get_system_av_info.argtypes = [ctypes.POINTER(RetroSystemAVInfo)]
         av_info = RetroSystemAVInfo()
         self.lib.retro_get_system_av_info(ctypes.byref(av_info))
         
+        # Guardar dimensiones base y relación de aspecto del juego
         self.base_width = av_info.geometry.base_width
         self.base_height = av_info.geometry.base_height
         self.aspect_ratio = av_info.geometry.aspect_ratio
 
-        # Configurar InputManager y Audio
+        # Actualizar el gestor de entrada con las nuevas dimensiones (para calcular coordenadas táctiles)
         self.input_manager.update_geometry(self.base_width, self.base_height, self.aspect_ratio)
+        # Inicializar el stream de audio con la frecuencia de muestreo del core
         self._current_sample_rate = int(av_info.timing.sample_rate)
         self.audio_manager.init_stream(self._current_sample_rate)
         
@@ -401,13 +434,18 @@ class RetroCore:
             print(f"[DEBUG] Window Resized: {win_width}x{win_height} | Core Base: {self.base_width}x{self.base_height}")
             self.last_win_size = (win_width, win_height)
 
+        # Determinar la relación de aspecto objetivo (la del juego)
         if self.aspect_ratio > 0:
             target_aspect = self.aspect_ratio
         else:
             target_aspect = self.base_width / self.base_height if self.base_height > 0 else 1.0
         
+        # Relación de aspecto actual de la ventana
         window_aspect = win_width / win_height if win_height > 0 else 1.0
 
+        # Cálculo de letterboxing/pillarboxing:
+        # Si la ventana es más ancha que el juego -> barras laterales (pillarbox)
+        # Si la ventana es más alta que el juego -> barras arriba/abajo (letterbox)
         if window_aspect > target_aspect:
             view_h = win_height
             view_w = win_height * target_aspect
@@ -415,6 +453,7 @@ class RetroCore:
             view_w = win_width
             view_h = win_width / target_aspect
         
+        # Centrar la imagen en la ventana
         x = int((win_width - view_w) / 2)
         y = int((win_height - view_h) / 2)
         w = int(view_w)
@@ -489,6 +528,7 @@ class RetroCore:
         # Guardar partida antes de descargar
         self.save_sram()
 
+        # Descargar el juego y desinicializar el core (en orden inverso a la carga)
         self.lib.retro_unload_game()
         self.lib.retro_deinit()
 
@@ -511,19 +551,22 @@ class RetroCore:
         # FreeLibrary se llama en bucle porque ctypes.CDLL y el propio core
         # pueden haber incrementado el refcount de LoadLibrary más de una vez.
         try:
-            handle = self.lib._handle
-            del self.lib
+            handle = self.lib._handle      # Guardar el handle nativo antes de eliminar el objeto
+            del self.lib                   # Eliminar la referencia Python
             if os.name == 'nt':
+                # En Windows: usar FreeLibrary del kernel32 para decrementar el refcount
                 kernel32 = ctypes.windll.kernel32
                 for _ in range(10):
                     if not kernel32.FreeLibrary(ctypes.c_void_p(handle)):
                         break
             else:
+                # En Linux/Mac: usar dlclose para descargar la librería
                 import _ctypes
                 _ctypes.dlclose(handle)
         except Exception as e:
             print(f"Aviso: No se pudo descargar la DLL: {e}")
 
+        # Resetear todas las variables de instancia a su estado inicial
         self.lib = None
         self.context_reset_cb = None
         self._hw_refs.clear()
@@ -536,7 +579,7 @@ class RetroCore:
         if hasattr(self, '_blit_logged'):
             del self._blit_logged
 
-        # Limpiar referencia global
+        # Limpiar referencia global para que los callbacks no intenten acceder a este core
         if _current_core is self:
             _current_core = None
 
@@ -579,10 +622,11 @@ class RetroCore:
                 # Actualizar geometría base si cambió
                 self.input_manager.update_geometry(width, height, self.aspect_ratio)
             
-            # Subir textura
+            # Determinar el formato de píxel y bytes por píxel según lo que el core indicó.
+            # Cada formato requiere una combinación específica de gl_fmt y gl_type.
             gl_fmt = GL_BGRA
             gl_type = GL_UNSIGNED_BYTE
-            bpp = 4
+            bpp = 4    # Bytes por píxel
             
             if self.pixel_format == RETRO_PIXEL_FORMAT_RGB565:
                  gl_fmt = GL_RGB
@@ -601,16 +645,21 @@ class RetroCore:
                  gl_type = GL_UNSIGNED_BYTE
                  bpp = 4
 
+            # Vincular la textura del FBO para subir los píxeles
             glBindTexture(GL_TEXTURE_2D, self.tex_id)
             
-            # Asegurar alineación de 1 byte
+            # Alineación de 1 byte para evitar problemas con filas que no son múltiplo de 4
             glPixelStorei(GL_UNPACK_ALIGNMENT, 1)
             
+            # El pitch (stride) es la cantidad de bytes entre el inicio de una fila y la siguiente.
+            # Puede ser mayor que width*bpp si hay padding. GL_UNPACK_ROW_LENGTH lo indica.
             if pitch > 0:
                 glPixelStorei(GL_UNPACK_ROW_LENGTH, pitch // bpp)
             
+            # Subir los datos de la imagen de la RAM a la textura de OpenGL
             glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, height, gl_fmt, gl_type, ctypes.c_void_p(data_addr))
             
+            # Restaurar valores por defecto de alineación
             glPixelStorei(GL_UNPACK_ROW_LENGTH, 0)
             glPixelStorei(GL_UNPACK_ALIGNMENT, 4)
             glBindTexture(GL_TEXTURE_2D, 0)
@@ -636,18 +685,16 @@ class RetroCore:
         # Debug
         # print(f"Blit: ID {self.fbo_id} -> {prev_fbo} | Size {width}x{height}")
         
+        # Configurar el blit: vincular FBO fuente (lectura) y destino (escritura)
         glBindFramebuffer(GL_READ_FRAMEBUFFER, self.fbo_id)
         glBindFramebuffer(GL_DRAW_FRAMEBUFFER, prev_fbo)
         
-        # Si estamos dibujando en un FBO de Qt, NO debemos hacer glClear completo si no queremos borrar el fondo
-        # Pero si el juego debe ocupar todo el área asignada, limpia el área de destino.
-        # glClear afectará a TODO el framebuffer si no usamos Scissor.
-        # Si prev_fbo es el widget, queremos limpiar solo el área del juego o todo el widget?
-        # Normalmente todo el widget.
-        
+        # Limpiar el framebuffer destino con negro antes del blit
+        # (así las barras de letterbox/pillarbox quedan negras)
         glClearColor(0,0,0,1)
         glClear(GL_COLOR_BUFFER_BIT)
         
+        # Coordenadas del rectángulo destino (calculadas en update_video)
         dst_x, dst_y, dst_w, dst_h = self.view_rect
         
         # Calcular coordenadas de origen (flip vertical)
@@ -677,37 +724,46 @@ class RetroCore:
                   f"fbo=({self.fbo_width}x{self.fbo_height}) "
                   f"src=({blit_w}x{blit_h}) dst={self.view_rect}")
 
+        # Coordenadas Y de origen para el blit
         src_y0 = 0
         src_y1 = blit_h
         
+        # Si hay que invertir verticalmente, intercambiar las coordenadas Y de origen
         if must_flip_y:
              src_y0 = blit_h
              src_y1 = 0
         
+        # Ejecutar el blit: copiar el contenido del FBO fuente al rectángulo destino
+        # con escalado bilineal (GL_LINEAR) para suavizar la imagen
         glBlitFramebuffer(0, src_y0, blit_w, src_y1, 
                           dst_x, dst_y, dst_x + dst_w, dst_y + dst_h, 
                           GL_COLOR_BUFFER_BIT, GL_LINEAR)
         
+        # Desvincular el framebuffer de lectura
         glBindFramebuffer(GL_READ_FRAMEBUFFER, 0)
 
     # Callback principal para la comunicación bidireccional entre el núcleo y el frontend (este script).
     # Maneja comandos para configuración, directorios, renderizado, logs y capacidades del sistema.
     def environment(self, cmd, data):
+        # El core solicita el directorio de sistema (BIOS, firmware, etc.)
         if cmd == RETRO_ENVIRONMENT_GET_SYSTEM_DIRECTORY:
             sys_dir = os.path.abspath("./system").encode('utf-8')
             if not os.path.exists("./system"):
                 os.makedirs("./system")
+            # Escribir la ruta en el puntero que nos pasa el core
             p_str = ctypes.cast(data, ctypes.POINTER(ctypes.c_char_p))
             p_str[0] = sys_dir
             print(f"Environment: System Directory -> {sys_dir}")
             return True
         
+        # El core informa del formato de píxel que usará para el video
         elif cmd == RETRO_ENVIRONMENT_SET_PIXEL_FORMAT:
             p_fmt = ctypes.cast(data, ctypes.POINTER(ctypes.c_int))
             self.pixel_format = p_fmt[0]
             print(f"Environment: Set Pixel Format -> {p_fmt[0]}")
             return True
 
+        # El core solicita el directorio de guardado (SRAM, saves, etc.)
         elif cmd == RETRO_ENVIRONMENT_GET_SAVE_DIRECTORY:
             # Citra almacena en el directorio de saves toda su estructura de usuario
             # (NAND, shaders, config binario, sdmc...). La redirigimos a system/ para
@@ -723,12 +779,15 @@ class RetroCore:
             p_str[0] = save_dir
             return True
 
+        # El core solicita la interfaz de log para enviar mensajes de depuración
         elif cmd == RETRO_ENVIRONMENT_GET_LOG_INTERFACE:
+            # Asignar nuestro callback de log a la estructura del core
             cb_struct = ctypes.cast(data, ctypes.POINTER(RetroLogCallback))
             cb_struct.contents.log = ctypes.cast(self.log_cb, ctypes.c_void_p)
             print("[ENV] GET_LOG_INTERFACE -> Callback de log asignado")
             return True
 
+        # El core consulta el valor de una opción de configuración (idioma, región, etc.)
         elif cmd == RETRO_ENVIRONMENT_GET_VARIABLE:
             var = ctypes.cast(data, ctypes.POINTER(RetroVariable)).contents
             key = var.key.decode('utf-8') if var.key else ''
@@ -739,19 +798,25 @@ class RetroCore:
                 self._option_refs[key] = ctypes.c_char_p(val)
                 var.value = self._option_refs[key]
                 return True
+            # Si la opción no está configurada, devolver None
             var.value = None
             return True
 
+        # El core solicita configurar renderizado por hardware (OpenGL).
+        # Se asignan los callbacks de get_framebuffer y get_proc_address.
         elif cmd == RETRO_ENVIRONMENT_SET_HW_RENDER:
             hw = ctypes.cast(data, ctypes.POINTER(RetroHWRenderCallback)).contents
+            # Asignar las funciones que el core usará para obtener el FBO y resolver funciones GL
             hw.get_current_framebuffer = c_hw_get_current_framebuffer_t(get_current_framebuffer_callback)
             hw.get_proc_address = c_hw_get_proc_address_t(get_proc_address_callback)
 
+            # Guardar el callback de reinicio de contexto y las opciones de renderizado
             self.context_reset_cb = hw.context_reset
             self.hw_render_depth = hw.depth
             self.hw_render_stencil = hw.stencil
             self.bottom_left_origin = hw.bottom_left_origin
 
+            # Guardar referencias para que el GC no libere los punteros a función
             self._hw_refs.append((hw.get_current_framebuffer, hw.get_proc_address))
             print("Environment: Set HW Render (Aceptado)")
             return True
@@ -780,49 +845,58 @@ class RetroCore:
                 self._pending_sample_rate = int(new_sr)
             return True
 
+        # El core actualiza la geometría del video (resolución, aspect ratio) sin cambiar timing
         elif cmd == RETRO_ENVIRONMENT_SET_GEOMETRY:
             geo = ctypes.cast(data, ctypes.POINTER(RetroGameGeometry)).contents
             self.base_width = geo.base_width
             self.base_height = geo.base_height
             self.aspect_ratio = geo.aspect_ratio
             self.input_manager.update_geometry(geo.base_width, geo.base_height, geo.aspect_ratio)
-            # Resize FBO if needed
+            # Redimensionar el FBO si ya existe
             if self.fbo_id:
                   self.init_framebuffer(self.base_width, self.base_height)
             return True
 
+        # El core consulta qué dispositivos de entrada soportamos (joypad, analog, puntero, ratón)
         elif cmd == RETRO_ENVIRONMENT_GET_INPUT_DEVICE_CAPABILITIES:
+            # Crear una máscara de bits con los dispositivos soportados
             caps = (1 << RETRO_DEVICE_JOYPAD) | (1 << RETRO_DEVICE_ANALOG) | (1 << RETRO_DEVICE_POINTER) | (1 << RETRO_DEVICE_MOUSE)
             p_caps = ctypes.cast(data, ctypes.POINTER(ctypes.c_uint64))
             p_caps[0] = caps
             print(f"[ENV] GET_INPUT_DEVICE_CAPABILITIES -> Reportando caps: {bin(caps)}")
             return True
 
+        # El core pregunta si alguna variable/opción ha sido modificada desde la última consulta
         elif cmd == RETRO_ENVIRONMENT_GET_VARIABLE_UPDATE:
             p_bool = ctypes.cast(data, ctypes.POINTER(ctypes.c_bool))
             p_bool[0] = self._variable_updated
-            self._variable_updated = False
+            self._variable_updated = False   # Resetear el flag tras la consulta
             return True
 
+        # El core consulta el idioma preferido del usuario
         elif cmd == RETRO_ENVIRONMENT_GET_LANGUAGE:
             p_lang = ctypes.cast(data, ctypes.POINTER(ctypes.c_uint))
             p_lang[0] = RETRO_LANGUAGE_SPANISH
             print("[ENV] GET_LANGUAGE -> Español (3)")
             return True
 
+        # El core pregunta qué contexto de renderizado por hardware preferimos
         elif cmd == RETRO_ENVIRONMENT_GET_PREFERRED_HW_RENDER:
             p_uint = ctypes.cast(data, ctypes.POINTER(ctypes.c_uint))
             p_uint[0] = 1 # RETRO_HW_CONTEXT_OPENGL
             return True
 
+        # El core pregunta qué versión de opciones soportamos (V2 = más rica en metadatos)
         elif cmd == RETRO_ENVIRONMENT_GET_CORE_OPTIONS_VERSION:
             p_uint = ctypes.cast(data, ctypes.POINTER(ctypes.c_uint))
             p_uint[0] = 2  # Soportamos SET_CORE_OPTIONS_V2
             return True
 
+        # El core envía descriptores de entrada (nombres de botones). Aceptamos sin procesar.
         elif cmd == RETRO_ENVIRONMENT_SET_INPUT_DESCRIPTORS:
             return True
 
+        # El core registra sus opciones de configuración (formato V1 con cadenas "desc; val1|val2|...")
         elif cmd == RETRO_ENVIRONMENT_SET_VARIABLES:
             # Parsear retro_variable[] (key + "desc; val1|val2|...")
             try:
@@ -845,6 +919,8 @@ class RetroCore:
                 print(f"[ENV] SET_VARIABLES error parsing: {e}")
             return True
 
+        # El core registra sus opciones con estructura retro_core_option_definition[] (V1 tipada)
+        # El core registra sus opciones con estructura retro_core_option_definition[] (V1 tipada)
         elif cmd == RETRO_ENVIRONMENT_SET_CORE_OPTIONS:
             # Parsear retro_core_option_definition[]
             try:
@@ -870,6 +946,8 @@ class RetroCore:
                 print(f"[ENV] SET_CORE_OPTIONS error parsing: {e}")
             return True
 
+        # El core registra sus opciones con estructura V2 (más completa, con categorías)
+        # El core registra sus opciones con estructura V2 (más completa, con categorías)
         elif cmd == RETRO_ENVIRONMENT_SET_CORE_OPTIONS_V2:
             # Parsear retro_core_options_v2
             try:
@@ -896,11 +974,14 @@ class RetroCore:
                 print(f"[ENV] SET_CORE_OPTIONS_V2 error parsing: {e}")
             return True
 
+        # Comando no reconocido: devolver False para indicar que no lo soportamos
         return False
 
     # Recibe un bloque de muestras de audio desde el núcleo y las envía al gestor de audio para su reproducción.
     def audio_sample_batch(self, data, frames):
+        # Cada frame tiene 2 canales (estéreo) * 2 bytes (16 bits) = 4 bytes por frame
         size = frames * 4
+        # Extraer los bytes de audio del puntero C y enviarlos al stream de PyAudio
         buf = ctypes.string_at(data, size)
         self.audio_manager.write(buf)
         return frames
