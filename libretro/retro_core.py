@@ -210,8 +210,8 @@ class RetroCore:
         self.lib.retro_get_memory_size.restype = ctypes.c_size_t
         self.lib.retro_get_memory_size.argtypes = [ctypes.c_uint]
 
+    # Establece una opcion del core y marca que hubo actualización.
     def set_option(self, key, value):
-        """Establece una opción del core y marca que hubo actualización."""
         self.core_options[key] = value
         self._variable_updated = True
 
@@ -583,7 +583,10 @@ class RetroCore:
         if _current_core is self:
             _current_core = None
 
+    # -----------------------------
     # Implementación de callbacks
+    # -----------------------------
+
     # Callback llamado por el núcleo cuando hay un nuevo frame de video listo para mostrar.
     # Realiza el blit (copiado) del FBO interno a la pantalla principal, aplicando el escalado calculado.
     def video_refresh(self, data, width, height, pitch):
@@ -623,25 +626,25 @@ class RetroCore:
                 self.input_manager.update_geometry(width, height, self.aspect_ratio)
             
             # Determinar el formato de píxel y bytes por píxel según lo que el core indicó.
-            # Cada formato requiere una combinación específica de gl_fmt y gl_type.
-            gl_fmt = GL_BGRA
+            # Cada formato requiere una combinación específica de gl_format y gl_type.
+            gl_format = GL_BGRA
             gl_type = GL_UNSIGNED_BYTE
             bpp = 4    # Bytes por píxel
             
             if self.pixel_format == RETRO_PIXEL_FORMAT_RGB565:
-                 gl_fmt = GL_RGB
+                 gl_format = GL_RGB
                  gl_type = GL_UNSIGNED_SHORT_5_6_5
                  bpp = 2
             elif self.pixel_format == RETRO_PIXEL_FORMAT_0RGB1555:
                  # 0RGB1555: 1 bit vacio (A), R, G, B.
                  # GL_UNSIGNED_SHORT_1_5_5_5_REV + GL_BGRA mapea correctamente A(15) R(14-10) G(9-5) B(4-0)
-                 gl_fmt = GL_BGRA
+                 gl_format = GL_BGRA
                  gl_type = GL_UNSIGNED_SHORT_1_5_5_5_REV
                  bpp = 2
             elif self.pixel_format == RETRO_PIXEL_FORMAT_XRGB8888:
                  # XRGB8888: Byte order B G R X en Little Endian.
                  # GL_BGRA + GL_UNSIGNED_BYTE lee Byte0=B, Byte1=G, Byte2=R, Byte3=A(X)
-                 gl_fmt = GL_BGRA
+                 gl_format = GL_BGRA
                  gl_type = GL_UNSIGNED_BYTE
                  bpp = 4
 
@@ -657,7 +660,7 @@ class RetroCore:
                 glPixelStorei(GL_UNPACK_ROW_LENGTH, pitch // bpp)
             
             # Subir los datos de la imagen de la RAM a la textura de OpenGL
-            glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, height, gl_fmt, gl_type, ctypes.c_void_p(data_addr))
+            glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, height, gl_format, gl_type, ctypes.c_void_p(data_addr))
             
             # Restaurar valores por defecto de alineación
             glPixelStorei(GL_UNPACK_ROW_LENGTH, 0)

@@ -9,7 +9,7 @@ from ui.controlsWindow.controlsWindow import ControlsWindow
 from ui.sidebar.sidebar import Sidebar
 from ui.popups.popupEliminar.popupEliminar import PopupEliminar
 from ui.gameDetailPage.gameDetailPage import GameDetailPage
-from game.juego import Juego, extraer_titulo_rom
+from game.juego import Game, extraer_titulo_rom
 from lista import Lista, SIN_LISTA
 from api.screenscraper import ScreenScraperAPI, obtener_ruta_portada
 
@@ -78,7 +78,7 @@ class MainWindow(QMainWindow):
         # Escanear juegos
         ruta_games = os.path.join(base, "games")
         ruta_cores = os.path.join(base, "cores")
-        self.juegos = Juego.escanear_juegos(ruta_games, ruta_cores)
+        self.juegos = Game.escanear_juegos(ruta_games, ruta_cores)
 
         # Usar portadas cacheadas como imagen de la carta
         for juego in self.juegos:
@@ -146,7 +146,7 @@ class MainWindow(QMainWindow):
         # Vigilar la carpeta games/ para refrescar la biblioteca automáticamente
         self._ruta_games = ruta_games
         self._ruta_cores = ruta_cores
-        self._archivos_actuales = Juego.obtener_archivos_rom(ruta_games)
+        self._archivos_actuales = Game.obtener_archivos_rom(ruta_games)
         self._watcher = QFileSystemWatcher([ruta_games], self)
         self._watcher.directoryChanged.connect(self._on_games_folder_changed)
 
@@ -197,10 +197,10 @@ class MainWindow(QMainWindow):
 
     def _on_games_folder_changed(self):
         """Re-escanea la carpeta games/ y reconstruye el grid de cartas."""
-        archivos_nuevos = Juego.obtener_archivos_rom(self._ruta_games)
-        Juego.migrar_renombrados(self._ruta_games, self._archivos_actuales, archivos_nuevos)
+        archivos_nuevos = Game.obtener_archivos_rom(self._ruta_games)
+        Game.migrar_renombrados(self._ruta_games, self._archivos_actuales, archivos_nuevos)
         self._archivos_actuales = archivos_nuevos
-        self.juegos = Juego.escanear_juegos(self._ruta_games, self._ruta_cores)
+        self.juegos = Game.escanear_juegos(self._ruta_games, self._ruta_cores)
         for juego in self.juegos:
             portada = obtener_ruta_portada(self._ruta_games, juego.nombre_archivo)
             if portada:
