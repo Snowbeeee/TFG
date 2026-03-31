@@ -7,7 +7,7 @@ from api.screenscraper import (
     ScreenScraperAPI, cargar_info_cache, guardar_info_cache,
     obtener_cache_dir, obtener_ruta_portada, obtener_rutas_galeria,
 )
-from game.juego import extraer_titulo_rom
+from game.game import extraer_titulo_rom
 from lista import Lista, SIN_LISTA
 
 

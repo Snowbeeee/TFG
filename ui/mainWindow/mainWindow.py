@@ -9,7 +9,7 @@ from ui.controlsWindow.controlsWindow import ControlsWindow
 from ui.sidebar.sidebar import Sidebar
 from ui.popups.popupEliminar.popupEliminar import PopupEliminar
 from ui.gameDetailPage.gameDetailPage import GameDetailPage
-from game.juego import Game, extraer_titulo_rom
+from game.game import Game, extraer_titulo_rom
 from lista import Lista, SIN_LISTA
 from api.screenscraper import ScreenScraperAPI, obtener_ruta_portada
 
