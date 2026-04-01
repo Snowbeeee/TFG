@@ -1,11 +1,13 @@
+# ── Imports ──────────────────────────────────────────────────────
 from PyQt6.QtWidgets import (
     QWidget, QHBoxLayout, QVBoxLayout
 )
 from ui.gameSideBar.gameSideBar import GameSideBar
 
 
+# Define el layout de la página de juego: sidebar (izquierda) + zona OpenGL (derecha).
+# openglContainer es un QWidget placeholder donde GameWindow añadirá el OpenGLWidget real.
 class GameWindowUI:
-    """UI de la página de juego: sidebar de configuración + zona OpenGL."""
 
     def __init__(self):
         # --- Declaración de todas las variables de instancia ---
@@ -15,6 +17,7 @@ class GameWindowUI:
         self.gameSideBar = None
         self.openglContainer = None
 
+    # Construye el layout horizontal: sidebar fija + zona de juego expansible
     def setupUi(self, parent):
         # Layout principal vertical (ocupa todo el espacio asignado)
         self.layout = QVBoxLayout(parent)

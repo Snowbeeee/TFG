@@ -1,3 +1,4 @@
+# ── Imports ──────────────────────────────────────────────────────
 import os
 
 from PyQt6.QtWidgets import (
@@ -9,8 +10,10 @@ from PyQt6.QtGui import QIcon, QPixmap
 from lista import Lista, SIN_LISTA
 
 
+# Sección colapsable en la barra lateral: cabecera (flecha + nombre) + lista de juegos.
+# Cada sección corresponde a una carpeta/lista de la biblioteca.
+# El botón flecha colapsa/expande la lista de juegos (patrón "accordion").
 class _ListaSeccion(QWidget):
-    """Sección colapsable en la barra lateral: cabecera + lista de nombres de juego."""
     juego_clicked = pyqtSignal(str)   # nombre_archivo del juego
     lista_clicked = pyqtSignal(str)   # nombre_lista (para filtrar)
     lista_borrada = pyqtSignal(str)   # nombre_lista (para borrar)
@@ -76,8 +79,9 @@ class _ListaSeccion(QWidget):
         self.arrow_btn.setText("+" if self._colapsado else "−")
         self.updateGeometry()
 
+    # Llena la sección con los nombres de los juegos dados.
+    # Cada juego se representa como un QPushButton con icono de la ROM.
     def set_juegos(self, juegos):
-        """Llena la sección con los nombres de los juegos dados."""
         for btn in self._items:
             btn.deleteLater()
         self._items.clear()
@@ -99,8 +103,10 @@ class _ListaSeccion(QWidget):
             self._items.append(btn)
 
 
+# Widget visual de la barra lateral (sin lógica de negocio).
+# Contiene el botón "Todos los juegos", botón "+" para crear listas,
+# y un área scrollable con secciones colapsables (_ListaSeccion).
 class SidebarUI(QFrame):
-    """Widget visual de la barra lateral (sin lógica de negocio)."""
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -163,8 +169,10 @@ class SidebarUI(QFrame):
         self.sidebarLayout.addStretch()
         self.sidebarScroll.setWidget(self.sidebarContainer)
 
+    # Construye las secciones colapsables con los juegos agrupados por lista.
+    # insertWidget(...count - 1): inserta antes del stretch final para mantenerlo abajo.
+    # Devuelve la lista de _ListaSeccion para que Sidebar conecte sus señales.
     def poblar(self, juegos):
-        """Construye las secciones colapsables. Devuelve la lista de _ListaSeccion."""
         for sec in self._secciones:
             sec.setParent(None)
             sec.deleteLater()

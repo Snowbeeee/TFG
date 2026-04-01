@@ -1,3 +1,4 @@
+# ── Imports ──────────────────────────────────────────────────────
 import os
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
@@ -7,8 +8,10 @@ from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QPixmap
 
 
+# Define el layout de la página de detalle de un juego.
+# Layout: barra superior (volver/menú) + área scrollable con portada,
+# metadatos, descripción, botón de jugar y galería de imágenes.
 class GameDetailPageUI:
-    """UI de la página de detalle de un juego."""
 
     def __init__(self):
         self.btn_volver = None
@@ -190,8 +193,8 @@ class GameDetailPageUI:
 
     # ── Métodos auxiliares de presentación ──
 
+    # Establece la imagen de portada, escalada proporcionalmente
     def set_cover(self, ruta):
-        """Establece la imagen de portada."""
         if ruta and os.path.exists(ruta):
             pixmap = QPixmap(ruta).scaled(
                 280, 380,
@@ -203,8 +206,9 @@ class GameDetailPageUI:
             self.cover_label.setPixmap(QPixmap())
             self.cover_label.setText("Sin carátula")
 
+    # Rellena los labels con la información del juego (sin tocar el título).
+    # setVisible(bool): oculta los campos vacíos para no dejar huecos en la UI.
     def set_info(self, info):
-        """Rellena los labels con la información del juego (sin tocar título)."""
         consola = info.get("consola", "")
         self.consola_label.setText(f"🎮  {consola}" if consola else "")
         self.consola_label.setVisible(bool(consola))
@@ -237,8 +241,10 @@ class GameDetailPageUI:
         self.descripcion_label.setText(
             desc if desc else "Sin descripción disponible.")
 
+    # Carga las miniaturas de la galería horizontal.
+    # Primero limpia las imágenes anteriores con deleteLater() (liberación segura en Qt).
     def set_galeria(self, rutas_imagenes):
-        """Carga las miniaturas de la galería horizontal."""
+        # Eliminar widgets previos del layout
         while self.gallery_layout.count():
             item = self.gallery_layout.takeAt(0)
             if item.widget():

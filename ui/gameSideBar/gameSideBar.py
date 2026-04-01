@@ -1,15 +1,16 @@
+# ── Imports ──────────────────────────────────────────────────────
 from PyQt6.QtWidgets import QFrame, QVBoxLayout
 from PyQt6.QtCore import pyqtSignal
 from ui.gameSideBar.gameSideBarUI import GameSideBarUI
 
 
+# Barra lateral que aparece durante la partida con ajustes rápidos.
+# Actúa como espejo de ConfigWindow: ambos leen/escriben los mismos valores.
+# La sincronización bidireccional se gestiona desde MainWindow conectando
+# las señales de ambos lados (patrón Observer de Qt).
+# _syncing: flag para evitar bucles infinitos al sincronizar
+# (ej: ConfigWindow cambia volumen → sync_from_config → valueChanged → volumen_cambiado → loop)
 class GameSideBar(QFrame):
-    """Barra lateral del juego: ajustes rápidos de audio/gráficos + botón salir.
-
-    Actúa como espejo de ConfigWindow: ambos leen/escriben los mismos valores.
-    La sincronización se gestiona desde MainWindow conectando las señales
-    de ambos lados.
-    """
 
     volumen_cambiado = pyqtSignal(int)
     resolucion_cambiada = pyqtSignal()
@@ -38,8 +39,9 @@ class GameSideBar(QFrame):
 
     # ── Sincronización desde ConfigWindow ──
 
+    # Actualiza todos los widgets para reflejar los valores de ConfigWindow.
+    # _syncing = True evita que los valueChanged emitan señales de vuelta.
     def sync_from_config(self, volume, ds_renderer_idx, ds_resolution_idx, citra_resolution_idx):
-        """Actualiza todos los widgets para reflejar los valores de ConfigWindow."""
         self._syncing = True
         self.ui.volumeSlider.setValue(volume)
         self.ui.volumeValueLabel.setText(f"{volume}%")
@@ -49,8 +51,8 @@ class GameSideBar(QFrame):
         self._actualizar_visibilidad_ds_res()
         self._syncing = False
 
+    # Muestra solo la sección de gráficos relevante para la consola del juego actual
     def set_consola(self, extension):
-        """Muestra solo la sección de gráficos relevante para la consola en juego."""
         es_ds = extension == ".nds"
         es_3ds = extension == ".3ds"
         self.ui.dsSectionWidget.setVisible(es_ds)

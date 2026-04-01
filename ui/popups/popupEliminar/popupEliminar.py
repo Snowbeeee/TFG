@@ -1,9 +1,11 @@
+# ── Imports ──────────────────────────────────────────────────────
 from ui.popups.popupBase import PopupBase
 from ui.popups.popupEliminar.popupEliminarUI import PopupEliminarUI
 
 
+# Popup de confirmación para eliminar una carpeta.
+# accept() = confirmar eliminación; reject() = cancelar.
 class PopupEliminar(PopupBase):
-    """Popup de confirmación para eliminar una carpeta."""
 
     def __init__(self, nombre_lista, parent=None):
         super().__init__(parent)

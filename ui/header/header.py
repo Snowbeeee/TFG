@@ -1,11 +1,15 @@
+# ── Imports ──────────────────────────────────────────────────────
 from PyQt6.QtWidgets import QFrame
 from PyQt6.QtCore import pyqtSignal
 from ui.header.headerUI import HeaderUI
 
 
+# Barra de navegación superior con enlaces: Biblioteca / Configuración / Controles.
+# Emite la señal 'navegacion' con el índice de la página seleccionada.
+# Usa propiedades CSS dinámicas ("active") para resaltar el enlace activo.
 class Header(QFrame):
-    """Barra de navegación con enlaces Biblioteca / Configuración."""
 
+    # Señal con el índice de página: 0=Biblioteca, 1=Configuración, 2=Controles
     navegacion = pyqtSignal(int)
 
     def __init__(self, parent=None):
@@ -23,16 +27,18 @@ class Header(QFrame):
         self.ui.linkConfiguracion.clicked.connect(lambda: self._navegar(1))
         self.ui.linkControles.clicked.connect(lambda: self._navegar(2))
 
+    # Actualiza el estado visual (propiedad CSS "active") y emite la señal.
+    # unpolish/polish: necesario para que Qt reaplique los estilos QSS
+    # al cambiar una propiedad dinámica como "active".
     def _navegar(self, index):
-        """Actualiza el estado visual y emite la señal de navegación."""
         for i, link in enumerate([self.ui.linkBiblioteca, self.ui.linkConfiguracion, self.ui.linkControles]):
             link.setProperty("active", index == i)
             link.style().unpolish(link)
             link.style().polish(link)
         self.navegacion.emit(index)
 
+    # Cambia el enlace activo sin emitir señal (para sincronización externa)
     def set_active(self, index):
-        """Cambia el enlace activo sin emitir señal."""
         for i, link in enumerate([self.ui.linkBiblioteca, self.ui.linkConfiguracion, self.ui.linkControles]):
             link.setProperty("active", index == i)
             link.style().unpolish(link)

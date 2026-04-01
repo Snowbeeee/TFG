@@ -1,9 +1,12 @@
+# ── Imports ──────────────────────────────────────────────────────
 from ui.popups.popupBase import PopupBase
 from ui.popups.popupAnadir.popupAnadirUI import PopupAnadirUI
 
 
+# Popup para introducir el nombre de una nueva carpeta/lista.
+# accept(): cierra el dialogo con código QDialog.Accepted.
+# reject(): cierra con código QDialog.Rejected.
 class PopupAnadir(PopupBase):
-    """Popup para introducir el nombre de una nueva carpeta."""
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -21,9 +24,9 @@ class PopupAnadir(PopupBase):
         self.ui.btnCancelar.clicked.connect(self.reject)
         self.ui.inputField.returnPressed.connect(self._aceptar)
 
+    # Devuelve el nombre introducido por el usuario
     @property
     def nombre(self):
-        """Devuelve el nombre introducido por el usuario."""
         return self._nombre
 
     def _aceptar(self):

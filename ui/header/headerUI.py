@@ -1,9 +1,12 @@
+# ── Imports ──────────────────────────────────────────────────────
 from PyQt6.QtWidgets import QFrame, QHBoxLayout, QPushButton
 from PyQt6.QtCore import Qt
 
 
+# Define el layout de la barra de navegación (cabecera).
+# Tres botones (QPushButton) con objectName "navLink" para estilos QSS.
+# La propiedad dinámica "active" se usa en el QSS para resaltar el enlace seleccionado.
 class HeaderUI:
-    """UI de la barra de navegación (cabecera)."""
 
     def __init__(self):
         # --- Declaración de todas las variables de instancia ---

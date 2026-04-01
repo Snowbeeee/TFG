@@ -1,7 +1,10 @@
+# ── Imports ──────────────────────────────────────────────────────
 import os
 import json
+import shutil  # Para copiar archivos ROM al hacer drag & drop
 from PyQt6.QtWidgets import QMainWindow, QMenu
-from PyQt6.QtCore import QFileSystemWatcher
+# QFileSystemWatcher: observa cambios en directorios/archivos del sistema
+from PyQt6.QtCore import QFileSystemWatcher, Qt
 from ui.mainWindow.mainWindowUI import MainWindowUI
 from ui.gameWindow.gameWindow import GameWindow
 from ui.configWindow.configWindow import ConfigWindow
@@ -9,13 +12,14 @@ from ui.controlsWindow.controlsWindow import ControlsWindow
 from ui.sidebar.sidebar import Sidebar
 from ui.popups.popupEliminar.popupEliminar import PopupEliminar
 from ui.gameDetailPage.gameDetailPage import GameDetailPage
-from game.game import Game, extraer_titulo_rom
+from game.game import Game, extraer_titulo_rom, EXTENSIONES_VALIDAS
 from lista import Lista, SIN_LISTA
 from api.screenscraper import ScreenScraperAPI, obtener_ruta_portada
 
 
+# Devuelve la ruta a un recurso empaquetado (ej: archivos QSS dentro de ui/).
+# sys._MEIPASS: directorio temporal donde PyInstaller extrae los recursos.
 def _get_resource_path(relative_path):
-    """Devuelve la ruta a un recurso empaquetado (ej: ui/)."""
     import sys
     if getattr(sys, 'frozen', False):
         return os.path.join(sys._MEIPASS, relative_path)
@@ -24,6 +28,7 @@ def _get_resource_path(relative_path):
         return os.path.join(base, relative_path)
 
 
+# Devuelve la ruta base del proyecto (compatible con PyInstaller)
 def _get_base_path():
     import sys
     if getattr(sys, 'frozen', False):
@@ -32,6 +37,10 @@ def _get_base_path():
         return os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
+# Ventana principal: orquesta todos los componentes de la aplicación.
+# Gestiona la navegación entre páginas (Biblioteca, Config, Controles, Juego, Detalle),
+# la sincronización bidireccional de ajustes (ConfigWindow ↔ GameSideBar),
+# la vigilancia de la carpeta games/ (QFileSystemWatcher) y el drag & drop de ROMs.
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -153,8 +162,12 @@ class MainWindow(QMainWindow):
         # Conectar navegación de la cabecera
         self.ui.header.navegacion.connect(self._navegar)
 
+        # Habilitar drag & drop de archivos
+        self.setAcceptDrops(True)
+
+    # Construye el dict de opciones gráficas para inyectar al core libretro.
+    # Estas opciones se envían con RETRO_ENVIRONMENT_SET_VARIABLE.
     def _build_core_options_extra(self):
-        """Construye el dict de opciones gráficas para inyectar al core."""
         return {
             # melonDS DS
             'melonds_render_mode': self.config_page.ds_renderer_value,
@@ -163,9 +176,9 @@ class MainWindow(QMainWindow):
             'citra_resolution_factor': self.config_page.citra_resolution_value,
         }
 
+    # Carga el juego seleccionado y cambia a la página de juego
     def _jugar(self, juego):
-        """Carga el juego seleccionado y cambia a la página de juego."""
-        # Extraer y mostrar el título interno de la ROM
+        # Extraer el título interno de la ROM para debug
         titulo_rom = extraer_titulo_rom(juego.ruta_juego, juego.extension)
         if titulo_rom:
             print(f"[ROM] Título interno: {titulo_rom}")
@@ -187,16 +200,16 @@ class MainWindow(QMainWindow):
         self._prev_ds_renderer_index = self.config_page.ui.dsRendererCombo.currentIndex()
         self._prev_ds_resolution_index = self.config_page.ui.dsResolutionCombo.currentIndex()
         self._prev_citra_resolution_index = self.config_page.ui.citraResolutionCombo.currentIndex()
-        # Aplicar volumen actual al audio del juego
-        if self.game_page.game_widget.audio_mgr:
-            self.game_page.game_widget.audio_mgr.volume = self.config_page.volume / 100.0
+        # Volumen: se aplica cuando _load_core() cree el AudioManager
+        self.game_page.game_widget._pending_volume = self.config_page.volume / 100.0
 
+    # Guarda el nombre personalizado del juego
     def _renombrar_juego(self, juego, nuevo_titulo):
-        """Guarda el nombre personalizado del juego."""
         juego.titulo = nuevo_titulo
 
+    # Re-escanea la carpeta games/ y reconstruye el grid de cartas.
+    # Se ejecuta automáticamente cuando QFileSystemWatcher detecta un cambio.
     def _on_games_folder_changed(self):
-        """Re-escanea la carpeta games/ y reconstruye el grid de cartas."""
         archivos_nuevos = Game.obtener_archivos_rom(self._ruta_games)
         Game.migrar_renombrados(self._ruta_games, self._archivos_actuales, archivos_nuevos)
         self._archivos_actuales = archivos_nuevos
@@ -211,8 +224,8 @@ class MainWindow(QMainWindow):
         self._conectar_cartas()
         self._poblar_sidebar()
 
+    # Vuelve al menú principal (el juego ya fue descargado por GameWindow)
     def _volver_menu(self):
-        """Vuelve al menú (el juego ya fue descargado por GameWindow)."""
         self.ui.header.show()
         self.ui.header.set_active(0)
         self.ui.stackedWidget.setCurrentIndex(0)
@@ -222,25 +235,27 @@ class MainWindow(QMainWindow):
         )
         self._conectar_cartas()
 
+    # Cambia entre páginas del stacked widget (0=Biblioteca, 1=Config, 2=Controles)
     def _navegar(self, index):
-        """Cambia entre páginas del stacked widget (0=Biblioteca, 1=Config)."""
         self.ui.stackedWidget.setCurrentIndex(index)
 
+    # Aplica el volumen al AudioManager activo si hay juego en marcha
     def _on_volume_changed(self, value):
-        """Aplica el volumen al audio activo si hay juego en marcha."""
         audio_mgr = self.game_page.game_widget.audio_mgr
         if audio_mgr:
             audio_mgr.volume = value / 100.0
 
+    # Recarga los controles en el InputManager del juego activo
     def _on_controls_changed(self):
-        """Recarga los controles en el InputManager del juego activo."""
         self.game_page.game_widget.set_pending_bindings(
             self.controls_page.ds_bindings,
             self.controls_page.n3ds_bindings
         )
 
+    # Aplica las opciones gráficas al core activo si hay juego en marcha.
+    # Distingue entre cambios que requieren reload completo (cambio de renderer SW↔GL)
+    # y cambios que se pueden aplicar en caliente ("hot-swap" de resolución).
     def _on_graphics_changed(self):
-        """Aplica las opciones gráficas al core activo si hay juego en marcha."""
         self._sync_config_to_game_sidebar()
 
         if not self.game_page.juego_actual:
@@ -275,8 +290,7 @@ class MainWindow(QMainWindow):
                     self.controls_page.ds_bindings,
                     self.controls_page.n3ds_bindings
                 )
-                if self.game_page.game_widget.audio_mgr:
-                    self.game_page.game_widget.audio_mgr.volume = self.config_page.volume / 100.0
+                self.game_page.game_widget._pending_volume = self.config_page.volume / 100.0
             elif self.game_page.game_widget.core:
                 # Solo resolución; melonDS la aplica via SET_SYSTEM_AV_INFO
                 print("[Frontend] Resolución DS cambiada → hot-swap")
@@ -292,9 +306,11 @@ class MainWindow(QMainWindow):
                 self.game_page.game_widget.core.set_option(key, val)
 
     # ── Sincronización bidireccional config ↔ game sidebar ──
+    # ConfigWindow y GameSideBar muestran los mismos ajustes.
+    # Cambiar uno debe reflejarse en el otro (patrón Observer).
 
+    # Copia los valores de ConfigWindow a la sidebar del juego
     def _sync_config_to_game_sidebar(self):
-        """Copia los valores de ConfigWindow a la sidebar del juego."""
         cp = self.config_page
         self.game_page.sidebar.sync_from_config(
             cp.volume,
@@ -303,15 +319,15 @@ class MainWindow(QMainWindow):
             cp.ui.citraResolutionCombo.currentIndex(),
         )
 
+    # La sidebar del juego cambió el volumen → actualizar ConfigWindow y audio
     def _on_game_sidebar_volume(self, value):
-        """La sidebar del juego cambió el volumen → actualizar ConfigWindow y audio."""
         self.config_page.ui.volumeSlider.setValue(value)
         audio_mgr = self.game_page.game_widget.audio_mgr
         if audio_mgr:
             audio_mgr.volume = value / 100.0
 
+    # La sidebar del juego cambió gráficos → actualizar ConfigWindow y core
     def _on_game_sidebar_graphics(self):
-        """La sidebar del juego cambió gráficos → actualizar ConfigWindow y core."""
         sb = self.game_page.sidebar
         self.config_page.ui.dsRendererCombo.setCurrentIndex(sb.ds_renderer_index)
         self.config_page.ui.dsResolutionCombo.setCurrentIndex(sb.ds_resolution_index)
@@ -322,8 +338,8 @@ class MainWindow(QMainWindow):
     #  Sidebar helpers
     # ------------------------------------------------------------------
 
+    # Conecta señales de clic de las cartas y etiquetas editables del grid
     def _conectar_cartas(self):
-        """Conecta cartas clickables y labels editables del grid."""
         for carta, juego in self.cartas_juego.items():
             carta.clicked.connect(lambda j=juego: self._mostrar_detalle(j))
         for lbl, juego in self.labels_juego.items():
@@ -333,32 +349,32 @@ class MainWindow(QMainWindow):
         for btn, nombre_lista in self.botones_borrar_carpeta.items():
             btn.clicked.connect(lambda checked, nl=nombre_lista: self._borrar_lista(nl))
 
+    # Reconstruye la barra lateral con los datos actuales
     def _poblar_sidebar(self):
-        """Reconstruye la barra lateral."""
         self.sidebar.poblar(self.juegos)
 
+    # Filtra las cartas del grid por la lista seleccionada
     def _filtrar_por_lista(self, nombre_lista):
-        """Filtra las cartas del grid por la lista seleccionada."""
         self._filtro_lista_actual = nombre_lista
         self.cartas_juego, self.labels_juego, self.botones_carpeta, self.botones_borrar_carpeta = self.ui.poblar_grid(
             self.juegos, nombre_lista
         )
         self._conectar_cartas()
 
+    # Muestra todos los juegos (sin filtro de lista)
     def _mostrar_todos(self):
-        """Muestra todos los juegos (sin filtro de lista)."""
         self._filtro_lista_actual = None
         self.cartas_juego, self.labels_juego, self.botones_carpeta, self.botones_borrar_carpeta = self.ui.poblar_grid(self.juegos)
         self._conectar_cartas()
         self._poblar_sidebar()
 
+    # Abre la página de detalle de un juego (con info de ScreenScraper)
     def _mostrar_detalle(self, juego):
-        """Abre la página de detalle de un juego."""
         self.detail_page.mostrar_juego(juego)
         self.ui.stackedWidget.setCurrentWidget(self.detail_page)
 
+    # Asigna un juego a una lista y refresca la UI
     def _asignar_lista(self, juego, nombre_lista):
-        """Asigna un juego a una lista y refresca la UI."""
         juego.lista = nombre_lista
         # Refrescar grid y sidebar
         self.cartas_juego, self.labels_juego, self.botones_carpeta, self.botones_borrar_carpeta = self.ui.poblar_grid(
@@ -367,31 +383,93 @@ class MainWindow(QMainWindow):
         self._conectar_cartas()
         self._poblar_sidebar()
 
+    # Muestra el popup de confirmación y elimina la carpeta si se acepta
     def _borrar_lista(self, nombre_lista):
-        """Muestra el popup de confirmación y elimina la carpeta si se acepta."""
         popup = PopupEliminar(nombre_lista, parent=self)
         if popup.exec():
             Lista.eliminar_lista(nombre_lista)
             self._mostrar_todos()
 
+    # Cuando se clica un juego en la sidebar, abre su página de detalle
     def _on_sidebar_juego_clicked(self, nombre_archivo):
-        """Cuando se clica un juego en la sidebar, abre su página de detalle."""
         for juego in self.juegos:
             if juego.nombre_archivo == nombre_archivo:
                 self._mostrar_detalle(juego)
                 return
 
+    # Reflow inicial cuando la ventana ya tiene su tamaño real
     def showEvent(self, event):
-        """Reflow inicial cuando la ventana ya tiene su tamaño real."""
         super().showEvent(event)
         self.ui._reflow_grid()
 
+    # Recalcula las columnas del grid al redimensionar la ventana
     def resizeEvent(self, event):
-        """Recalcula las columnas del grid al redimensionar la ventana."""
         super().resizeEvent(event)
         self.ui._reflow_grid()
 
+    # ── Drag & Drop de archivos ROM ──
+    # Permite arrastrar archivos .nds/.3ds desde el explorador hacia la ventana.
+
+    # Acepta el drag si contiene archivos con extensión válida
+    def dragEnterEvent(self, event):
+        mime = event.mimeData()
+        if mime.hasUrls():
+            for url in mime.urls():
+                if url.isLocalFile():
+                    ext = os.path.splitext(url.toLocalFile())[1].lower()
+                    if ext in EXTENSIONES_VALIDAS:
+                        event.acceptProposedAction()
+                        return
+        event.ignore()
+
+    def dragMoveEvent(self, event):
+        event.acceptProposedAction()
+
+    # Copia los archivos ROM a games/ y los asigna a la lista actual.
+    # Si el archivo ya existe, no lo copia pero sí lo asigna a la lista.
+    # El QFileSystemWatcher detectará el cambio y refrescará el grid.
+    def dropEvent(self, event):
+        mime = event.mimeData()
+        if not mime.hasUrls():
+            return
+
+        archivos_copiados = []
+        for url in mime.urls():
+            if not url.isLocalFile():
+                continue
+            ruta_origen = url.toLocalFile()
+            nombre = os.path.basename(ruta_origen)
+            ext = os.path.splitext(nombre)[1].lower()
+            if ext not in EXTENSIONES_VALIDAS:
+                continue
+
+            ruta_destino = os.path.join(self._ruta_games, nombre)
+
+            # No copiar si ya existe el mismo archivo
+            if os.path.exists(ruta_destino):
+                archivos_copiados.append(nombre)
+                continue
+
+            try:
+                shutil.copy2(ruta_origen, ruta_destino)
+                archivos_copiados.append(nombre)
+            except Exception as e:
+                print(f"[Drop] Error al copiar {nombre}: {e}")
+
+        # Asignar a la lista activa (si hay filtro de lista activo y no es SIN_LISTA)
+        lista_destino = self._filtro_lista_actual
+        for nombre in archivos_copiados:
+            if lista_destino and lista_destino != SIN_LISTA:
+                Lista.asignar_juego(nombre, lista_destino)
+
+        # El QFileSystemWatcher detectará el cambio y refrescará el grid
+        # pero si solo se asignó a la lista (archivo ya existía), refrescar manualmente
+        if archivos_copiados:
+            self._on_games_folder_changed()
+
+        event.acceptProposedAction()
+
+    # Al cerrar la ventana, descargar el core si estaba activo
     def closeEvent(self, event):
-        """Al cerrar la ventana, limpiar el core si estaba activo."""
         self.game_page.unload_game()
         super().closeEvent(event)

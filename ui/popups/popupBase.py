@@ -1,10 +1,15 @@
+# ── Imports ──────────────────────────────────────────────────────
+# QDialog: ventana modal de Qt (bloquea la interacción con la ventana padre)
 from PyQt6.QtWidgets import QDialog, QWidget
 from PyQt6.QtCore import Qt
+# QPainter/QColor: necesarios para pintar el overlay semitransparente
 from PyQt6.QtGui import QPainter, QColor
 
 
+# Widget semitransparente que oscurece la ventana padre.
+# WA_TranslucentBackground: permite que el fondo del widget sea transparente
+# para que el fillRect con alpha sea visible (sin esto sería opaco).
 class _Overlay(QWidget):
-    """Widget semitransparente que oscurece la ventana padre."""
 
     def __init__(self, parent, on_click):
         super().__init__(parent)
@@ -20,8 +25,10 @@ class _Overlay(QWidget):
         self._on_click()
 
 
+# Base para todos los popups: añade overlay oscuro sobre la ventana padre.
+# FramelessWindowHint: elimina la barra de título del sistema para un look personalizado.
+# setModal(True): bloquea la interacción con otras ventanas mientras está abierto.
 class PopupBase(QDialog):
-    """Base para todos los popups: añade overlay oscuro sobre la ventana padre."""
 
     def __init__(self, parent=None):
         super().__init__(parent, Qt.WindowType.Dialog | Qt.WindowType.FramelessWindowHint)
@@ -30,8 +37,8 @@ class PopupBase(QDialog):
         # --- Declaración de todas las variables de instancia ---
         self._overlay = None
 
+    # Sube por la jerarquía de widgets hasta encontrar la ventana raíz
     def _top_level_parent(self):
-        """Devuelve la ventana de nivel superior del padre."""
         widget = self.parent()
         while widget and widget.parent():
             widget = widget.parent()

@@ -1,3 +1,4 @@
+# ── Imports ──────────────────────────────────────────────────────
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout,
     QLabel, QSlider, QComboBox, QPushButton, QFrame
@@ -5,8 +6,10 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt
 
 
+# UI de la barra lateral in-game: configuración rápida + botón salir.
+# Es casi idéntica a ConfigWindowUI pero más compacta (280px de ancho)
+# y con un botón de salir al final.
 class GameSideBarUI(QFrame):
-    """UI de la barra lateral del juego: configuración + botón salir."""
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -26,6 +29,8 @@ class GameSideBarUI(QFrame):
 
         self._setup_ui()
 
+    # Construye el layout: secciones de audio, gráficos DS, gráficos 3DS y botón salir.
+    # dsSectionWidget y citraSectionWidget se muestran/ocultan según la consola.
     def _setup_ui(self):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(15, 15, 15, 15)

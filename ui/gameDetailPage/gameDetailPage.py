@@ -1,5 +1,7 @@
+# ── Imports ──────────────────────────────────────────────────────
 import os
 from PyQt6.QtWidgets import QWidget, QMenu, QVBoxLayout
+# QThread: clase de Qt para ejecutar código en un hilo separado sin bloquear la UI
 from PyQt6.QtCore import QThread, pyqtSignal
 
 from ui.gameDetailPage.gameDetailPageUI import GameDetailPageUI
@@ -11,10 +13,14 @@ from game.game import extraer_titulo_rom
 from lista import Lista, SIN_LISTA
 
 
+# Hilo de trabajo (Worker) para llamar a la API de ScreenScraper sin bloquear la UI.
+# QThread ejecuta run() en un hilo separado; al terminar emite señales.
+# Esto es necesario porque las peticiones HTTP son bloqueantes y congelarían
+# la interfaz si se hicieran en el hilo principal (patrón Worker Thread).
 class _ScraperWorker(QThread):
-    """Hilo para llamar a la API sin bloquear la UI."""
-    terminado = pyqtSignal(dict)
-    error = pyqtSignal(str)
+    # Señales para comunicar el resultado al hilo principal
+    terminado = pyqtSignal(dict)  # Emite la info del juego
+    error = pyqtSignal(str)       # Emite un mensaje de error
 
     def __init__(self, api, nombre_busqueda, extension, ruta_games, nombre_archivo, ruta_rom):
         super().__init__()
@@ -25,8 +31,10 @@ class _ScraperWorker(QThread):
         self.nombre_archivo = nombre_archivo
         self.ruta_rom = ruta_rom
 
+    # Ejecución del hilo: primero intenta buscar por hash (más fiable),
+    # si no encuentra, busca por nombre (fallback).
     def run(self):
-        # 1º: Buscar por hash del fichero ROM (más fiable)
+        # 1º: Buscar por hash del fichero ROM (identificación exacta)
         print(f"[ScreenScraper] Intentando identificar por hash: '{self.nombre_archivo}'")
         info = self.api.buscar_por_hash(self.ruta_rom, self.extension)
 
@@ -77,11 +85,12 @@ class _ScraperWorker(QThread):
         self.terminado.emit(info)
 
 
+# Página de detalle: muestra información obtenida de ScreenScraper
+# (portada, descripción, géneros, galería) y permite lanzar el juego.
 class GameDetailPage(QWidget):
-    """Página de detalle: muestra info de ScreenScraper y permite jugar."""
 
-    jugar_signal = pyqtSignal(object)
-    volver_signal = pyqtSignal()
+    jugar_signal = pyqtSignal(object)  # Emite el objeto Game al pulsar Jugar
+    volver_signal = pyqtSignal()       # Emite al pulsar Volver
 
     def __init__(self, api, ruta_games, parent=None):
         super().__init__(parent)
@@ -99,8 +108,9 @@ class GameDetailPage(QWidget):
 
     # ── Público ──
 
+    # Carga la información del juego. Si hay caché local, la usa directamente.
+    # Si no, lanza un QThread para llamar a la API de ScreenScraper en segundo plano.
     def mostrar_juego(self, juego):
-        """Carga la información del juego (desde caché o API)."""
         self._juego_actual = juego
 
         # Cancelar worker anterior si existe
@@ -173,8 +183,8 @@ class GameDetailPage(QWidget):
         if self._juego_actual:
             self.jugar_signal.emit(self._juego_actual)
 
+    # Menú contextual para asignar el juego a listas (desplegable)
     def _on_menu(self):
-        """Menú contextual para asignar el juego a listas."""
         if not self._juego_actual:
             return
         juego = self._juego_actual

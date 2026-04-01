@@ -1,13 +1,16 @@
+# ── Imports ──────────────────────────────────────────────────────
 import os
 import json
 from PyQt6.QtWidgets import QWidget, QApplication
 from PyQt6.QtCore import Qt, pyqtSignal, QTimer
 from ui.controlsWindow.controlsWindowUI import ControlsWindowUI
 
-# Nombre legible para teclas de Qt
+# ── Constantes ───────────────────────────────────────────────────
+# Mapeo inverso de las constantes Qt.Key a nombres legibles.
+# vars(Qt.Key) devuelve {"Key_A": 65, "Key_B": 66, ...}
 _QT_KEY_NAMES = {v: k.replace("Key_", "") for k, v in vars(Qt.Key).items() if k.startswith("Key_")}
 
-# Nombre legible para botones de gamepad (SDL‐style usados por QGamepad / joystick)
+# Nombres legibles para botones de gamepad (convención SDL/Xbox)
 _GAMEPAD_BUTTON_NAMES = {
     0: "GP A", 1: "GP B", 2: "GP X", 3: "GP Y",
     4: "GP Back", 5: "GP Guide", 6: "GP Start",
@@ -16,18 +19,21 @@ _GAMEPAD_BUTTON_NAMES = {
     11: "GP Up", 12: "GP Down", 13: "GP Left", 14: "GP Right",
 }
 
+# Nombres legibles para ejes analógicos del gamepad
 _GAMEPAD_AXIS_NAMES = {
     0: "GP LStick X", 1: "GP LStick Y",
     2: "GP RStick X", 3: "GP RStick Y",
     4: "GP LTrigger", 5: "GP RTrigger",
 }
 
+# Nombres legibles para hats (D-pad digital en SDL2)
 _GAMEPAD_HAT_NAMES = {
     (0, 1): "GP DPad Up", (0, -1): "GP DPad Down",
     (-1, 0): "GP DPad Left", (1, 0): "GP DPad Right",
 }
 
-# Valores por defecto: tecla Qt (int) para cada botón
+# Asignaciones por defecto de teclado para botones DS.
+# Los valores son constantes Qt.Key (enteros) que se comparan con event.key().
 DS_DEFAULTS = {
     "a":      Qt.Key.Key_X,
     "b":      Qt.Key.Key_Z,
@@ -43,6 +49,8 @@ DS_DEFAULTS = {
     "right":  Qt.Key.Key_Right,
 }
 
+# Asignaciones por defecto de teclado para botones 3DS.
+# Incluye botones extra: ZL, ZR y Circle Pad (stick analógico).
 N3DS_DEFAULTS = {
     "a":            Qt.Key.Key_X,
     "b":            Qt.Key.Key_Z,
@@ -65,10 +73,13 @@ N3DS_DEFAULTS = {
 }
 
 
+# Devuelve un nombre legible para mostrar en el botón de la UI.
+# binding es un dict con "type" y "value", por ejemplo:
+#   {"type": "key", "value": 88}  → tecla X
+#   {"type": "gamepad_button", "value": 0}  → botón A del mando
+#   {"type": "gamepad_axis", "value": 4, "direction": "+"}  → gatillo izquierdo
+#   {"type": "gamepad_hat", "value": 0, "hx": 0, "hy": 1}  → D-pad arriba
 def _friendly_name(binding):
-    """Devuelve un nombre legible para una asignación.
-    binding es un dict: {"type": "key", "value": int}  o  {"type": "gamepad_button", ...}
-    """
     if binding is None:
         return "Sin asignar"
     t = binding.get("type")
@@ -90,9 +101,13 @@ def _friendly_name(binding):
     return str(v)
 
 
+# Página de asignación de controles para DS y 3DS.
+# Permite reasignar cada botón a una tecla de teclado o botón/eje de gamepad.
+# Usa un flujo de captura: el usuario hace clic en un botón, se activa la espera
+# de input (teclado o gamepad), y al detectarlo se guarda la asignación.
 class ControlsWindow(QWidget):
-    """Página de asignación de controles para DS y 3DS."""
 
+    # Señal emitida cuando cambia cualquier asignación de controles
     controles_cambiados = pyqtSignal()
 
     def __init__(self, parent=None):
@@ -146,14 +161,14 @@ class ControlsWindow(QWidget):
 
     # ── Config path ──
 
+    # Establece la ruta de config.json y carga los controles guardados
     def set_config_path(self, path):
-        """Establece la ruta del archivo config.json y carga los controles."""
         self._config_path = path
         self._cargar_config()
         self._refresh_all_labels()
 
     # ── Defaults ──
-
+    # Aplica los controles por defecto a ambos mapeos
     def _apply_defaults(self):
         for k, v in DS_DEFAULTS.items():
             self._ds_bindings[k] = {"type": "key", "value": int(v)}
@@ -173,7 +188,9 @@ class ControlsWindow(QWidget):
         self.controles_cambiados.emit()
 
     # ── Label refresh ──
-
+    # Actualiza el texto de todos los botones con el nombre legible del binding.
+    # También resetea la propiedad CSS "conflict" y reaplica estilos.
+    # unpolish/polish: Qt necesita reaplicar el QSS al cambiar propiedades dinámicas.
     def _refresh_all_labels(self):
         for key, btn in self.ui.ds_bind_buttons.items():
             binding = self._ds_bindings.get(key)
@@ -188,10 +205,13 @@ class ControlsWindow(QWidget):
             btn.style().unpolish(btn)
             btn.style().polish(btn)
 
-    # ── Binding flow ──
+    # ── Flujo de captura de controles ──
 
+    # Inicia la captura: marca el botón como "esperando", captura el teclado
+    # con grabKeyboard() (todo input de teclado va a este widget),
+    # guarda un snapshot del estado del gamepad para detectar cambios,
+    # y arranca un timeout de 5 segundos.
     def _start_binding(self, console, key, btn):
-        """Inicia la captura de una tecla/botón para asignar."""
         # Si ya estábamos esperando, cancelar la anterior
         if self._waiting_for_input:
             self._cancel_binding()
@@ -216,8 +236,9 @@ class ControlsWindow(QWidget):
         self.setFocus()
         self.grabKeyboard()
 
+    # Completa la asignación con el binding capturado.
+    # releaseKeyboard(): devuelve el teclado al sistema normal de eventos Qt.
     def _finish_binding(self, binding):
-        """Completa la asignación con el binding dado."""
         self._timeout_timer.stop()
         self.releaseKeyboard()
 
@@ -242,8 +263,8 @@ class ControlsWindow(QWidget):
         self._guardar_config()
         self.controles_cambiados.emit()
 
+    # Cancela la captura sin modificar ningún binding
     def _cancel_binding(self):
-        """Cancela la captura sin cambiar nada."""
         self._timeout_timer.stop()
         self.releaseKeyboard()
 
@@ -263,10 +284,10 @@ class ControlsWindow(QWidget):
         self._waiting_key = None
         self._waiting_console = None
 
-    # ── Conflict detection ──
+    # ── Detección de conflictos ──
 
+    # Comprueba si dos bindings representan la misma entrada física
     def _bindings_equal(self, b1, b2):
-        """Comprueba si dos bindings representan la misma entrada."""
         if b1 is None or b2 is None:
             return False
         if b1.get("type") != b2.get("type") or b1.get("value") != b2.get("value"):
@@ -278,8 +299,9 @@ class ControlsWindow(QWidget):
             return b1.get("hx") == b2.get("hx") and b1.get("hy") == b2.get("hy")
         return True
 
+    # Si el binding ya está asignado a otro botón de la misma consola, lo desasigna.
+    # Evita que dos botones tengan la misma tecla/botón del mando.
     def _remove_conflicts(self, console, key, binding):
-        """Si el binding ya está asignado a otro botón de la misma consola, lo desasigna."""
         bindings = self._ds_bindings if console == "ds" else self._n3ds_bindings
         buttons = self.ui.ds_bind_buttons if console == "ds" else self.ui.n3ds_bind_buttons
 
@@ -295,8 +317,9 @@ class ControlsWindow(QWidget):
                     btn.style().unpolish(btn)
                     btn.style().polish(btn)
 
-    # ── Keyboard capture ──
-
+    # ── Captura de teclado ──
+    # keyPressEvent se llama cuando hay una tecla pulsada y tenemos grabKeyboard.
+    # Escape cancela la captura; cualquier otra tecla completa la asignación.
     def keyPressEvent(self, event):
         if self._waiting_for_input:
             key = event.key()
@@ -307,10 +330,11 @@ class ControlsWindow(QWidget):
             return
         super().keyPressEvent(event)
 
-    # ── Gamepad support (pygame-based polling) ──
+    # ── Soporte de gamepad (polling con pygame/SDL2) ──
 
+    # Inicializa pygame.joystick para leer gamepads conectados.
+    # pygame.init() inicializa SDL2 internamente.
     def _init_gamepad(self):
-        """Intenta inicializar pygame.joystick para leer gamepads."""
         try:
             import pygame
             if not pygame.get_init():
@@ -332,8 +356,9 @@ class ControlsWindow(QWidget):
             self._gamepad_timer.timeout.connect(self._poll_gamepad)
         self._gamepad_timer.start()
 
+    # Guarda el estado actual del gamepad (botones, ejes, hats) para
+    # comparar después y detectar qué cambió (patrón "snapshot + diff").
     def _snapshot_gamepad(self):
-        """Guarda el estado actual del gamepad para detectar cambios."""
         self._prev_gamepad_buttons = {}
         self._prev_gamepad_axes = {}
         self._prev_gamepad_hats = {}
@@ -351,8 +376,9 @@ class ControlsWindow(QWidget):
         except Exception:
             pass
 
+    # Gestiona hot-plug de gamepads via eventos SDL2.
+    # JOYDEVICEADDED/REMOVED se disparan cuando se conecta/desconecta un mando.
     def _process_gamepad_events(self):
-        """Gestiona hot-plug de gamepads via eventos SDL2."""
         try:
             import pygame
             for event in pygame.event.get():
@@ -364,8 +390,13 @@ class ControlsWindow(QWidget):
         except Exception:
             pass
 
+    # Comprueba si se ha pulsado un botón, movido un hat (D-pad) o un eje (stick/trigger).
+    # Para ejes: se usan dos umbrales distintos:
+    #   - AXIS_THRESHOLD = 0.7: para sticks analógicos (reposo en 0.0)
+    #   - TRIGGER_THRESHOLD = 0.3: para gatillos (reposo en -1.0 en SDL2)
+    # Los triggers en SDL2 van de -1.0 (sin pulsar) a +1.0 (pulsado al máximo),
+    # a diferencia de los sticks que van de -1.0 a +1.0 con centro en 0.0.
     def _poll_gamepad(self):
-        """Comprueba si se ha pulsado un botón o movido un eje del gamepad."""
         self._process_gamepad_events()
         if not self._waiting_for_input or not self._gamepad:
             return
@@ -409,6 +440,8 @@ class ControlsWindow(QWidget):
         except Exception:
             pass
 
+    # showEvent/hideEvent: Qt los llama al mostrar/ocultar el widget.
+    # Se arranca/para el timer de polling para no consumir CPU cuando no es visible.
     def showEvent(self, event):
         super().showEvent(event)
         if self._gamepad_timer:
@@ -422,7 +455,7 @@ class ControlsWindow(QWidget):
             self._cancel_binding()
 
     # ── Persistencia ──
-
+    # Carga las asignaciones de controles desde config.json
     def _cargar_config(self):
         if not self._config_path or not os.path.exists(self._config_path):
             return
@@ -442,6 +475,7 @@ class ControlsWindow(QWidget):
         except Exception:
             pass
 
+    # Guarda las asignaciones en config.json, preservando otras claves existentes
     def _guardar_config(self):
         if not self._config_path:
             return
@@ -458,6 +492,8 @@ class ControlsWindow(QWidget):
             pass
 
     # ── API pública para InputManager ──
+    # Devuelven copias de los bindings para que el InputManager sepa
+    # qué tecla/botón corresponde a cada acción de la consola
 
     @property
     def ds_bindings(self):

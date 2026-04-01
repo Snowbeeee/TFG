@@ -1,3 +1,4 @@
+# ── Imports ──────────────────────────────────────────────────────
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout,
     QLabel, QSlider, QComboBox
@@ -5,8 +6,9 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt
 
 
+# Define el layout de la página de configuración.
+# Separa la construcción visual (UI) de la lógica (ConfigWindow).
 class ConfigWindowUI:
-    """UI de la página de configuración."""
 
     def __init__(self):
         # --- Declaración de todas las variables de instancia ---
@@ -17,7 +19,10 @@ class ConfigWindowUI:
         self.dsResolutionRow = None
         self.citraResolutionCombo = None
 
+    # Construye todos los widgets y los organiza en el layout.
+    # parent: el QWidget que contiene esta UI (ConfigWindow).
     def setupUi(self, parent):
+        # objectName se usa en los archivos .qss para aplicar estilos CSS
         parent.setObjectName("configPage")
         configLayout = QVBoxLayout(parent)
         configLayout.setContentsMargins(40, 30, 40, 30)
@@ -54,7 +59,7 @@ class ConfigWindowUI:
 
         configLayout.addLayout(volumeRow)
 
-        # ── Sección Gráficos – DS (melonDS DS) ──
+        # ── Sección Gráficos – DS (melonDS) ──
         tituloDS = QLabel("Gráficos – DS")
         tituloDS.setObjectName("configSectionTitle")
         configLayout.addWidget(tituloDS)

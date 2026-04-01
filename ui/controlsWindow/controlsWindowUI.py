@@ -1,9 +1,13 @@
+# ── Imports ──────────────────────────────────────────────────────
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QGridLayout,
     QLabel, QPushButton, QScrollArea, QFrame, QTabWidget
 )
 from PyQt6.QtCore import Qt
 
+# ── Constantes ───────────────────────────────────────────────────
+# Tuplas (nombre_display, clave_config) para los botones de cada consola.
+# nombre_display se muestra en la UI; clave_config se usa como key en el dict de bindings.
 
 # Botones DS:  (nombre_display, clave_config)
 _DS_BUTTONS = [
@@ -21,7 +25,7 @@ _DS_BUTTONS = [
     ("→ D-Pad", "right"),
 ]
 
-# Botones adicionales 3DS (además de los DS)
+# Botones 3DS (incluye todos los de DS + ZL, ZR y Circle Pad)
 _3DS_EXTRA_BUTTONS = [
     ("A",       "a"),
     ("B",       "b"),
@@ -44,8 +48,10 @@ _3DS_EXTRA_BUTTONS = [
 ]
 
 
+# Define el layout de la página de controles.
+# Tiene dos pestañas (QTabWidget): una para DS y otra para 3DS.
+# Cada pestaña tiene una rejilla (QGridLayout) con etiqueta + botón por cada control.
 class ControlsWindowUI:
-    """UI de la página de controles."""
 
     def __init__(self):
         self.tabWidget = None
@@ -55,6 +61,9 @@ class ControlsWindowUI:
         self.ds_reset_btn = None
         self.n3ds_reset_btn = None
 
+    # Construye el layout completo de controles.
+    # QScrollArea: contenedor con scroll para cuando hay muchos botones.
+    # QGridLayout: rejilla de 2 columnas (etiqueta | botón de binding).
     def setupUi(self, parent):
         parent.setObjectName("controlsPage")
 

@@ -1,3 +1,4 @@
+# ── Imports ──────────────────────────────────────────────────────
 from PyQt6.QtWidgets import (
     QVBoxLayout, QHBoxLayout,
     QLabel, QPushButton
@@ -5,8 +6,9 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt
 
 
+# Define el layout del popup de confirmación de eliminación.
+# Título + mensaje de advertencia + botones (Cancelar / Eliminar).
 class PopupEliminarUI:
-    """UI del popup de confirmación para eliminar una carpeta."""
 
     def __init__(self):
         # --- Declaración de todas las variables de instancia ---

@@ -1,3 +1,4 @@
+# ── Imports ──────────────────────────────────────────────────────
 from PyQt6.QtWidgets import (
     QVBoxLayout, QHBoxLayout,
     QLabel, QLineEdit, QPushButton
@@ -5,8 +6,9 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt
 
 
+# Define el layout del popup para añadir una nueva carpeta.
+# Título + campo de texto + botones (Cancelar / Crear).
 class PopupAnadirUI:
-    """UI del popup para añadir una nueva carpeta."""
 
     def __init__(self):
         # --- Declaración de todas las variables de instancia ---

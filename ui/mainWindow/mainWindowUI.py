@@ -1,3 +1,4 @@
+# ── Imports ──────────────────────────────────────────────────────
 import os
 from PyQt6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QGridLayout,
@@ -12,8 +13,9 @@ from ui.sidebar.sidebarUI import SidebarUI
 from lista import Lista, SIN_LISTA
 
 
+# QFrame que emite una señal clicked al hacer clic.
+# Se usa como contenedor clickeable para las cartas de juego.
 class ClickableFrame(QFrame):
-    """QFrame que emite una señal clicked al hacer clic."""
     clicked = pyqtSignal()
 
     def mousePressEvent(self, event):
@@ -22,8 +24,10 @@ class ClickableFrame(QFrame):
         super().mousePressEvent(event)
 
 
+# UI principal: contiene un QStackedWidget para navegar entre páginas.
+# QStackedWidget apila múltiples widgets y muestra uno a la vez (como pestañas invisibles).
+# Índices: 0=Biblioteca, 1=Configuración, 2=Controles, 3=Juego, 4=Detalle.
 class MainWindowUI:
-    """UI principal: contiene un QStackedWidget para navegar entre páginas."""
 
     def __init__(self):
         # --- Declaración de todas las variables de instancia ---
@@ -110,8 +114,8 @@ class MainWindowUI:
     #  Cartas (panel derecho)
     # ------------------------------------------------------------------
 
+    # Crea un widget 'carta' con imagen y nombre editable para un juego
     def crear_carta(self, juego):
-        """Crea un widget 'carta' con imagen y nombre editable."""
         carta = ClickableFrame()
         carta.setObjectName("gameCard")
         carta.setFixedSize(220, 300)
@@ -152,8 +156,8 @@ class MainWindowUI:
     CARD_WIDTH = 220
     CARD_SPACING = 20
 
+    # Crea una carta visual para una carpeta/lista del grid
     def crear_carta_carpeta(self, nombre_lista, count):
-        """Crea una carta visual para una carpeta/lista del grid."""
         carta = QFrame()
         carta.setObjectName("folderCard")
         carta.setFixedSize(self.CARD_WIDTH, 300)
@@ -203,17 +207,12 @@ class MainWindowUI:
 
         return carta, btn_abrir, btn_borrar
 
+    # Llena el grid con cartas generadas dinámicamente.
+    # Si filtro_lista es None (vista 'Todos'), muestra una carta por cada carpeta
+    # con juegos y las cartas de los juegos sin carpeta asignada.
+    # Si filtro_lista es un nombre de lista, solo muestra los juegos de esa lista.
+    # Devuelve 4 dicts para que MainWindow pueda conectar señales a cada carta.
     def poblar_grid(self, juegos, filtro_lista=None):
-        """Llena el grid con cartas generadas dinámicamente.
-        Si filtro_lista es None (vista 'Todos'), muestra una carta por cada carpeta
-        con juegos y las cartas de los juegos sin carpeta asignada.
-        Si filtro_lista es un nombre de lista, solo muestra los juegos de esa lista.
-        Devuelve (cartas_juego, labels_juego, botones_carpeta, botones_borrar_carpeta) donde:
-          cartas_juego           = {ClickableFrame: Juego}
-          labels_juego           = {EditableLabel: Juego}
-          botones_carpeta        = {QPushButton: nombre_lista}
-          botones_borrar_carpeta = {QPushButton: nombre_lista}
-        """
         self._filtro_lista = filtro_lista
 
         # Guardar referencias para poder reposicionar al cambiar tamaño
@@ -260,16 +259,17 @@ class MainWindowUI:
 
         return cartas_juego, labels, carpetas, borrar_carpetas
 
+    # Calcula cuántas columnas caben según el ancho del scrollArea
     def _calcular_columnas(self):
-        """Calcula cuántas columnas caben según el ancho del scrollArea."""
         ancho = self.scrollArea.viewport().width()
         if ancho <= 0:
             return 1
         columnas = max(1, (ancho + self.CARD_SPACING) // (self.CARD_WIDTH + self.CARD_SPACING))
         return columnas
 
+    # Reposiciona todas las cartas en el grid según las columnas actuales.
+    # Se llama en cada resizeEvent para hacer el grid responsivo.
     def _reflow_grid(self):
-        """Reposiciona todas las cartas en el grid según las columnas actuales."""
         if not self._cartas:
             return
 

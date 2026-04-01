@@ -1,3 +1,5 @@
+# ── Imports ──────────────────────────────────────────────────────
+# time.perf_counter: reloj de alta precisión para medir FPS
 import time
 
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel
@@ -6,8 +8,10 @@ from ui.gameWindow.gameWindowUI import GameWindowUI
 from ui.openGLWidget import OpenGLWidget
 
 
+# Página de juego: se crea una sola vez y se reutiliza para cada juego.
+# Contiene un OpenGLWidget donde se renderiza el emulador, una sidebar
+# de configuración rápida y un contador de FPS superpuesto.
 class GameWindow(QWidget):
-    """Página de juego: se crea una vez y se reutiliza para cada juego."""
 
     salir_signal = pyqtSignal()
 
@@ -50,13 +54,12 @@ class GameWindow(QWidget):
         self._fps_label.move(0, 0)
         self._fps_label.hide()
 
+    # Destruye el OpenGLWidget actual y crea uno nuevo con contexto GL limpio.
+    # Citra libretro deja objetos GL huérfanos (shaders, VAOs, texturas de caché)
+    # que no libera en retro_deinit(). Recrear el widget fuerza a Qt a destruir el
+    # contexto OpenGL antiguo y crear uno completamente limpio para el siguiente juego.
+    # deleteLater(): no destruye inmediatamente, espera al event loop de Qt.
     def _recreate_game_widget(self):
-        """Destruye el OpenGLWidget actual y crea uno nuevo con contexto GL limpio.
-
-        Citra libretro deja objetos GL huérfanos (shaders, VAOs, texturas de caché)
-        que no libera en retro_deinit(). Recrear el widget fuerza a Qt a destruir el
-        contexto OpenGL antiguo y crear uno completamente limpio para el siguiente juego.
-        """
         old = self.game_widget
         old.unload_game()                         # libera lo que puede
         self._container_layout.removeWidget(old)
@@ -66,8 +69,12 @@ class GameWindow(QWidget):
         self.game_widget = OpenGLWidget(self.ui.openglContainer)
         self._container_layout.addWidget(self.game_widget)
 
+    # Tick del timer (~60 Hz): restaura savestate si hay uno pendiente,
+    # actualiza el contador de FPS y repinta el widget OpenGL.
+    # perf_counter: reloj monotonónico de nanosegundos, ideal para medir
+    # intervalos cortos de tiempo con alta precisión.
     def _on_frame(self):
-        """Tick del timer: primero restaura savestate pendiente si lo hay, luego repinta."""
+        # Si hay un savestate pendiente (tras reload), restaurarlo ahora
         if self._pending_state and self.game_widget.initialized and self.game_widget.core:
             state = self._pending_state
             self._pending_state = None
@@ -84,8 +91,8 @@ class GameWindow(QWidget):
             self._fps_last_time = now
         self.game_widget.update()
 
+    # Restaura un savestate (bloque de bytes) en el core activo
     def _restore_state(self, state_data):
-        """Restaura un savestate en memoria en el core activo."""
         if self.game_widget.core and self.game_widget.initialized:
             self.game_widget.core.load_state(state_data)
 
@@ -98,8 +105,8 @@ class GameWindow(QWidget):
     def juego_actual(self):
         return self._juego_actual
 
+    # Carga un juego: recrea el contexto GL limpio y arranca el timer de renderizado
     def load_game(self, juego, core_options_extra=None):
-        """Carga un juego: recrea el contexto GL y arranca el timer."""
         self.timer.stop()
         self._recreate_game_widget()
         self._juego_actual = juego
@@ -117,10 +124,12 @@ class GameWindow(QWidget):
         if not self.timer.isActive():
             self.timer.start(16)
 
+    # Recarga el juego actual con nuevas opciones gráficas (ej: cambio de renderer).
+    # Guarda el estado completo en memoria (savestate) antes de recargar y lo
+    # restaura después, por lo que el juego continúa exactamente donde estaba.
+    # El savestate se restaura en el siguiente tick porque el core necesita
+    # al menos un frame para inicializarse tras la carga.
     def reload_game(self, core_options_extra):
-        """Recarga el juego actual con nuevas opciones gráficas (ej: cambio de renderer).
-        Guarda el estado completo en memoria antes de recargar y lo restaura después,
-        por lo que el juego continúa exactamente donde estaba."""
         if not self._juego_actual:
             return
         juego = self._juego_actual
@@ -147,16 +156,16 @@ class GameWindow(QWidget):
         else:
             self._pending_state = None
 
+    # Descarga el juego actual y para el timer de renderizado
     def unload_game(self):
-        """Descarga el juego actual y para el timer."""
         self.timer.stop()
         self._fps_label.hide()
         self._juego_actual = None
         self._pending_state = None
         self.game_widget.unload_game()
 
+    # Descarga el juego y emite señal para volver al menú principal
     def _salir(self):
-        """Descarga el juego y emite la señal para volver al menú."""
         self.unload_game()
         self.salir_signal.emit()
 
