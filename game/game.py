@@ -19,7 +19,7 @@ ICON_SIZE = 192
 # Mapeo de extensiones de ROM a su core libretro correspondiente
 EXTENSION_CORE_MAP = {
     ".3ds": "citra_libretro.dll",
-    ".nds": "melondsds_libretro.dll",
+    ".nds": "melonds_libretro.dll",
     ".iso": "dolphin_libretro.dll",
     ".gcm": "dolphin_libretro.dll",
     ".wbfs": "dolphin_libretro.dll",
