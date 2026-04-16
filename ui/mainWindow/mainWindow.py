@@ -169,7 +169,7 @@ class MainWindow(QMainWindow):
     # Estas opciones se envían con RETRO_ENVIRONMENT_SET_VARIABLE.
     def _build_core_options_extra(self):
         return {
-            # melonDS DS
+            # melonDS
             'melonds_render_mode': self.config_page.ds_renderer_value,
             'melonds_opengl_resolution': self.config_page.ds_resolution_value,
             # Citra

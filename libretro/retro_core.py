@@ -165,7 +165,7 @@ class RetroCore:
         # el core llame GET_VARIABLE durante su inicialización (ej: Citra al crear
         # el config del firmware) ya reciba los valores correctos de idioma/región.
         self.core_options = {
-            # melonDS DS - Idioma del firmware
+            # melonDS - Idioma del firmware
             'melonds_firmware_language': 'es',
             # Citra - Idioma del sistema 3DS
             'citra_language': 'Spanish',
