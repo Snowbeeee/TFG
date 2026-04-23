@@ -124,7 +124,6 @@ class ScreenScraperAPI:
 
     # El endpoint de búsqueda por hash (jeuInfos.php) devuelve un solo juego, esta función parsea ese juego.
     def _parsear_respuesta_hash_un_juego(self, datos_respuesta):
-        """Parsea la respuesta de jeuInfos.php (un solo juego, no una lista)."""
         try:
             juego = datos_respuesta.get("response", {}).get("jeu", {})
             if not juego:

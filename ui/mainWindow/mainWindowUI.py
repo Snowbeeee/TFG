@@ -24,6 +24,90 @@ class ClickableFrame(QFrame):
         super().mousePressEvent(event)
 
 
+# Tarjeta de juego con soporte para menú contextual (click derecho)
+class GameCard(ClickableFrame):
+    # Señales para las acciones del menú contextual
+    asignar_lista = pyqtSignal(str)  # nombre_lista
+    eliminar_lista = pyqtSignal()
+    mover_lista = pyqtSignal(str)  # nombre_lista
+    
+    def __init__(self, juego, filtro_lista_actual=None):
+        super().__init__()
+        self.juego = juego
+        self.filtro_lista_actual = filtro_lista_actual
+    
+    # Muestra menú contextual con opciones según la lista del juego.
+    def contextMenuEvent(self, event):
+        menu = QMenu(self)
+        menu.setObjectName("cardContextMenu")
+        
+        lista_actual = self.juego.lista
+        
+        if lista_actual == SIN_LISTA:
+            # Juego sin lista: opción de añadir
+            submenu_anadir = menu.addMenu("Añadir a lista")
+            submenu_anadir.setObjectName("cardContextMenu")
+            for nombre_lista in Lista.obtener_nombres():
+                submenu_anadir.addAction(nombre_lista, 
+                    lambda nl=nombre_lista: self.asignar_lista.emit(nl))
+        elif self.filtro_lista_actual is None or self.filtro_lista_actual == SIN_LISTA:
+            # Estamos en "Todos los juegos" o en "Sin lista": solo mostrar "Mover a lista"
+            submenu_mover = menu.addMenu("Mover a lista")
+            submenu_mover.setObjectName("cardContextMenu")
+            for nombre_lista in Lista.obtener_nombres():
+                if nombre_lista != lista_actual:
+                    submenu_mover.addAction(nombre_lista,
+                        lambda nl=nombre_lista: self.mover_lista.emit(nl))
+        else:
+            # Estamos en una lista específica: opciones de eliminar y mover
+            menu.addAction("Eliminar de lista", self.eliminar_lista.emit)
+            
+            submenu_mover = menu.addMenu("Mover a lista")
+            submenu_mover.setObjectName("cardContextMenu")
+            for nombre_lista in Lista.obtener_nombres():
+                if nombre_lista != lista_actual:
+                    submenu_mover.addAction(nombre_lista,
+                        lambda nl=nombre_lista: self.mover_lista.emit(nl))
+        
+        menu.exec(event.globalPos())
+
+
+# Tarjeta de lista/carpeta con soporte para menú contextual (click derecho)
+class ListCard(ClickableFrame):
+    # Señal para eliminar la lista
+    eliminar_lista = pyqtSignal(str)  # nombre_lista
+    
+    def __init__(self, nombre_lista):
+        super().__init__()
+        self.nombre_lista = nombre_lista
+    
+    # Muestra menú contextual con opción de eliminar lista.
+    def contextMenuEvent(self, event):
+        menu = QMenu(self)
+        menu.setObjectName("cardContextMenu")
+        menu.addAction("Eliminar lista",
+            lambda: self.eliminar_lista.emit(self.nombre_lista))
+        menu.exec(event.globalPos())
+
+
+# Widget custom para el grid container que captura clicks derechos
+class GridContainerWidget(QWidget):
+    crear_lista = pyqtSignal()
+    
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.filtro_lista_actual = None
+    
+    # Muestra menú contextual al hacer click derecho en el fondo del grid.
+    def contextMenuEvent(self, event):
+        # Solo mostrar el menú si estamos en "Todos los juegos"
+        if self.filtro_lista_actual is None:
+            menu = QMenu(self)
+            menu.setObjectName("cardContextMenu")
+            menu.addAction("Crear lista", self.crear_lista.emit)
+            menu.exec(event.globalPos())
+
+
 # UI principal: contiene un QStackedWidget para navegar entre páginas.
 # QStackedWidget apila múltiples widgets y muestra uno a la vez (como pestañas invisibles).
 # Índices: 0=Biblioteca, 1=Configuración, 2=Controles, 3=Juego, 4=Detalle.
@@ -87,13 +171,20 @@ class MainWindowUI:
         rightLayout.setContentsMargins(30, 20, 30, 30)
         rightLayout.setSpacing(20)
 
+        # Botón de volver (solo visible cuando hay un filtro activo)
+        self.btn_volver = QPushButton("← Volver")
+        self.btn_volver.setObjectName("backButton")
+        self.btn_volver.setMaximumWidth(100)
+        self.btn_volver.hide()
+        rightLayout.addWidget(self.btn_volver, alignment=Qt.AlignmentFlag.AlignLeft)
+
         self.scrollArea = QScrollArea()
         self.scrollArea.setObjectName("scrollArea")
         self.scrollArea.setWidgetResizable(True)
         self.scrollArea.setFrameShape(QFrame.Shape.NoFrame)
         rightLayout.addWidget(self.scrollArea)
 
-        self.gridContainer = QWidget()
+        self.gridContainer = GridContainerWidget()
         self.gridContainer.setObjectName("gridContainer")
         self.gridLayout = QGridLayout(self.gridContainer)
         self.gridLayout.setSpacing(20)
@@ -115,8 +206,8 @@ class MainWindowUI:
     # ------------------------------------------------------------------
 
     # Crea un widget 'carta' con imagen y nombre editable para un juego
-    def crear_carta(self, juego):
-        carta = ClickableFrame()
+    def crear_carta(self, juego, filtro_lista_actual=None):
+        carta = GameCard(juego, filtro_lista_actual)
         carta.setObjectName("gameCard")
         carta.setFixedSize(220, 300)
         carta.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -158,7 +249,7 @@ class MainWindowUI:
 
     # Crea una carta visual para una carpeta/lista del grid
     def crear_carta_carpeta(self, nombre_lista, count):
-        carta = QFrame()
+        carta = ListCard(nombre_lista)
         carta.setObjectName("folderCard")
         carta.setFixedSize(self.CARD_WIDTH, 300)
         carta.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -187,25 +278,9 @@ class MainWindowUI:
         count_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(count_label)
 
-        # Fila inferior: Abrir + Borrar
-        bottom_row = QHBoxLayout()
-        bottom_row.setSpacing(6)
+        layout.addStretch()
 
-        btn_abrir = QPushButton("Abrir")
-        btn_abrir.setObjectName("folderCardButton")
-        btn_abrir.setCursor(Qt.CursorShape.PointingHandCursor)
-        bottom_row.addWidget(btn_abrir)
-
-        btn_borrar = QPushButton("🗑")
-        btn_borrar.setObjectName("folderCardDeleteBtn")
-        btn_borrar.setFixedWidth(36)
-        btn_borrar.setCursor(Qt.CursorShape.PointingHandCursor)
-        btn_borrar.setToolTip(f'Eliminar carpeta "{nombre_lista}"')
-        bottom_row.addWidget(btn_borrar)
-
-        layout.addLayout(bottom_row)
-
-        return carta, btn_abrir, btn_borrar
+        return carta
 
     # Llena el grid con cartas generadas dinámicamente.
     # Si filtro_lista es None (vista 'Todos'), muestra una carta por cada carpeta
@@ -233,7 +308,7 @@ class MainWindowUI:
             # Filtro activo: mostrar solo los juegos de esa lista
             juegos_visibles = Lista.obtener_juegos_de_lista(filtro_lista, juegos)
             for juego in juegos_visibles:
-                carta, lbl = self.crear_carta(juego)
+                carta, lbl = self.crear_carta(juego, filtro_lista)
                 self._cartas.append(carta)
                 cartas_juego[carta] = juego
                 labels[lbl] = juego
@@ -241,15 +316,14 @@ class MainWindowUI:
             # Sin filtro: una carta por cada carpeta + juegos sin carpeta
             for nombre_lista in Lista.obtener_nombres():
                 juegos_en_lista = Lista.obtener_juegos_de_lista(nombre_lista, juegos)
-                carta, btn, btn_del = self.crear_carta_carpeta(nombre_lista, len(juegos_en_lista))
+                carta = self.crear_carta_carpeta(nombre_lista, len(juegos_en_lista))
                 self._cartas.append(carta)
-                carpetas[btn] = nombre_lista
-                borrar_carpetas[btn_del] = nombre_lista
+                carpetas[carta] = nombre_lista
 
             # Juegos sin carpeta asignada
             juegos_sin_lista = Lista.obtener_juegos_de_lista(SIN_LISTA, juegos)
             for juego in juegos_sin_lista:
-                carta, lbl = self.crear_carta(juego)
+                carta, lbl = self.crear_carta(juego, None)
                 self._cartas.append(carta)
                 cartas_juego[carta] = juego
                 labels[lbl] = juego
@@ -257,7 +331,7 @@ class MainWindowUI:
         # Posicionar con las columnas que quepan ahora
         self._reflow_grid()
 
-        return cartas_juego, labels, carpetas, borrar_carpetas
+        return cartas_juego, labels, carpetas
 
     # Calcula cuántas columnas caben según el ancho del scrollArea
     def _calcular_columnas(self):

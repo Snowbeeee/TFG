@@ -3,8 +3,8 @@ import os
 from PyQt6.QtWidgets import QApplication
 from ui.mainWindow.mainWindow import MainWindow
 
+# Devuelve la ruta base del proyecto, compatible con PyInstaller.
 def get_base_path():
-    """Devuelve la ruta base del proyecto, compatible con PyInstaller."""
     if getattr(sys, 'frozen', False):
         return os.path.dirname(sys.executable)
     else:
