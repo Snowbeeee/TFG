@@ -161,6 +161,8 @@ class MainWindow(QMainWindow):
         # Vigilar la carpeta games/ para refrescar la biblioteca automáticamente
         self._ruta_games = ruta_games
         self._ruta_cores = ruta_cores
+        # Mostrar la ruta de games en el label
+        self.ui.games_path_label.setText(f"Ruta de juegos: {os.path.abspath(ruta_games)}")
         self._archivos_actuales = Game.obtener_archivos_rom(ruta_games)
         self._watcher = QFileSystemWatcher([ruta_games], self)
         self._watcher.directoryChanged.connect(self._on_games_folder_changed)

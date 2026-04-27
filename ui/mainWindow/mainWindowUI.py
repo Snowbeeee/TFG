@@ -128,6 +128,8 @@ class MainWindowUI:
         self.gridLayout = None
         self._cartas = []
         self._filtro_lista = None  # None = mostrar todos
+        # Label de ruta de games
+        self.games_path_label = None
 
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
@@ -171,12 +173,31 @@ class MainWindowUI:
         rightLayout.setContentsMargins(30, 20, 30, 30)
         rightLayout.setSpacing(20)
 
+        # Layout superior con botón volver y ruta de games
+        topLayout = QHBoxLayout()
+        topLayout.setContentsMargins(0, 0, 0, 0)
+        topLayout.setSpacing(20)
+
         # Botón de volver (solo visible cuando hay un filtro activo)
         self.btn_volver = QPushButton("← Volver")
         self.btn_volver.setObjectName("backButton")
         self.btn_volver.setMaximumWidth(100)
         self.btn_volver.hide()
-        rightLayout.addWidget(self.btn_volver, alignment=Qt.AlignmentFlag.AlignLeft)
+        _sp = self.btn_volver.sizePolicy()
+        _sp.setRetainSizeWhenHidden(True)
+        self.btn_volver.setSizePolicy(_sp)
+        topLayout.addWidget(self.btn_volver, alignment=Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
+
+        # Stretch para separar el botón del label
+        topLayout.addStretch()
+
+        # Label con la ruta de la carpeta de games
+        self.games_path_label = QLabel("")
+        self.games_path_label.setObjectName("gamesPathLabel")
+        self.games_path_label.setStyleSheet("color: #FB923C; font-size: 12px;")
+        topLayout.addWidget(self.games_path_label, alignment=Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+
+        rightLayout.addLayout(topLayout)
 
         self.scrollArea = QScrollArea()
         self.scrollArea.setObjectName("scrollArea")
