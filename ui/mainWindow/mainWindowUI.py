@@ -130,6 +130,7 @@ class MainWindowUI:
         self._filtro_lista = None  # None = mostrar todos
         # Label de ruta de games
         self.games_path_label = None
+        self.btn_anadir_juego = None
 
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
@@ -190,6 +191,11 @@ class MainWindowUI:
 
         # Stretch para separar el botón del label
         topLayout.addStretch()
+
+        # Botón para añadir un juego desde el explorador de archivos
+        self.btn_anadir_juego = QPushButton("+ Añadir juego")
+        self.btn_anadir_juego.setObjectName("addGameButton")
+        topLayout.addWidget(self.btn_anadir_juego, alignment=Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
 
         # Label con la ruta de la carpeta de games
         self.games_path_label = QLabel("")

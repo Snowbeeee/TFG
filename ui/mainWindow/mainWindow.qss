@@ -143,6 +143,25 @@ QPushButton#folderCardDeleteBtn:pressed {
     background-color: #a93226;
 }
 
+/* Add game button */
+QPushButton#addGameButton {
+    background-color: #27ae60;
+    color: #ffffff;
+    font-size: 13px;
+    font-weight: bold;
+    padding: 8px 12px;
+    border-radius: 6px;
+    border: none;
+}
+
+QPushButton#addGameButton:hover {
+    background-color: #2ecc71;
+}
+
+QPushButton#addGameButton:pressed {
+    background-color: #1e8449;
+}
+
 /* Back button */
 QPushButton#backButton {
     background-color: #3498db;

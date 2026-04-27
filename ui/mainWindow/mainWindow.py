@@ -2,7 +2,7 @@
 import os
 import json
 import shutil  # Para copiar archivos ROM al hacer drag & drop
-from PyQt6.QtWidgets import QMainWindow, QMenu
+from PyQt6.QtWidgets import QMainWindow, QMenu, QFileDialog
 # QFileSystemWatcher: observa cambios en directorios/archivos del sistema
 from PyQt6.QtCore import QFileSystemWatcher, Qt
 from ui.mainWindow.mainWindowUI import MainWindowUI
@@ -101,6 +101,9 @@ class MainWindow(QMainWindow):
 
         # Conectar botón de volver
         self.ui.btn_volver.clicked.connect(self._mostrar_todos)
+
+        # Conectar botón de añadir juego
+        self.ui.btn_anadir_juego.clicked.connect(self._anadir_juego_desde_dialogo)
 
         # Conectar señal de crear lista desde el click derecho en el grid
         self.ui.gridContainer.crear_lista.connect(self._mostrar_popup_crear_lista)
@@ -530,6 +533,30 @@ class MainWindow(QMainWindow):
             self._on_games_folder_changed()
 
         event.acceptProposedAction()
+
+    # Abre el explorador de archivos, mueve la ROM seleccionada a games/
+    # y la asigna a la lista activa si hay un filtro de lista activo.
+    def _anadir_juego_desde_dialogo(self):
+        extensiones = " ".join(f"*{ext}" for ext in EXTENSIONES_VALIDAS)
+        filtro = f"ROMs ({extensiones});;Todos los archivos (*)"
+        ruta_origen, _ = QFileDialog.getOpenFileName(self, "Seleccionar ROM", "", filtro)
+        if not ruta_origen:
+            return
+
+        nombre = os.path.basename(ruta_origen)
+        ruta_destino = os.path.join(self._ruta_games, nombre)
+
+        if not os.path.exists(ruta_destino):
+            try:
+                shutil.move(ruta_origen, ruta_destino)
+            except Exception as e:
+                print(f"[Añadir] Error al mover {nombre}: {e}")
+                return
+
+        if self._filtro_lista_actual and self._filtro_lista_actual != SIN_LISTA:
+            Lista.asignar_juego(nombre, self._filtro_lista_actual)
+
+        self._on_games_folder_changed()
 
     # Al cerrar la ventana, descargar el core si estaba activo
     def closeEvent(self, event):
