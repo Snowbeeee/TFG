@@ -13,7 +13,7 @@ from ui.openGLWidget import OpenGLWidget
 # de configuración rápida y un contador de FPS superpuesto.
 class GameWindow(QWidget):
 
-    salir_signal = pyqtSignal()
+    salir_signal = pyqtSignal(object)  # emite el juego que se estaba ejecutando
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -21,6 +21,7 @@ class GameWindow(QWidget):
         self.ui.setupUi(self)
         self._juego_actual = None   # juego que se está ejecutando ahora mismo
         self._pending_state = None  # savestate en memoria para restaurar tras reload
+        self._session_start = None  # tiempo de inicio de la sesión actual (perf_counter)
 
         # Layout del contenedor (vacío hasta que se carga el primer juego)
         self._container_layout = QVBoxLayout(self.ui.openglContainer)
@@ -110,6 +111,7 @@ class GameWindow(QWidget):
         self.timer.stop()
         self._recreate_game_widget()
         self._juego_actual = juego
+        self._session_start = time.perf_counter()
         self.ui.gameSideBar.set_consola(juego.extension)
         if core_options_extra:
             self.game_widget.core_options_extra = core_options_extra
@@ -158,15 +160,21 @@ class GameWindow(QWidget):
 
     # Descarga el juego actual y para el timer de renderizado
     def unload_game(self):
+        if self._juego_actual and self._session_start is not None:
+            elapsed = time.perf_counter() - self._session_start
+            if elapsed > 5:
+                self._juego_actual.registrar_sesion(elapsed)
+        self._session_start = None
         self.timer.stop()
         self._fps_label.hide()
         self._juego_actual = None
         self._pending_state = None
         self.game_widget.unload_game()
 
-    # Descarga el juego y emite señal para volver al menú principal
+    # Descarga el juego y emite señal con el juego que se estaba ejecutando
     def _salir(self):
+        juego = self._juego_actual
         self.unload_game()
-        self.salir_signal.emit()
+        self.salir_signal.emit(juego)
 
     

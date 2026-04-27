@@ -134,7 +134,7 @@ class MainWindow(QMainWindow):
         # Página de juego permanente (se crea una sola vez)
         self.game_page = GameWindow()
         self.ui.stackedWidget.addWidget(self.game_page)  # index 3
-        self.game_page.salir_signal.connect(self._volver_menu)
+        self.game_page.salir_signal.connect(self._volver_desde_juego)
 
         # ScreenScraper API
         config_path = os.path.join(base, "config.json")
@@ -235,7 +235,16 @@ class MainWindow(QMainWindow):
         self._conectar_cartas()
         self._poblar_sidebar()
 
-    # Vuelve al menú principal (el juego ya fue descargado por GameWindow)
+    # Al salir del juego redirige a la página de detalle de ese juego
+    def _volver_desde_juego(self, juego):
+        self.ui.header.show()
+        if juego:
+            self.detail_page.mostrar_juego(juego)
+            self.ui.stackedWidget.setCurrentWidget(self.detail_page)
+        else:
+            self._volver_menu()
+
+    # Vuelve al menú principal (biblioteca)
     def _volver_menu(self):
         self.ui.header.show()
         self.ui.header.set_active(0)

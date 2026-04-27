@@ -357,7 +357,18 @@ def _recorrer(diccionario_medias, resultado_medias):
 
 # ── Cache ──
 
-# Esta funcion devuelve el directorio de caché para un juego concreto, 
+# Renombra el directorio de caché del scraper cuando se renombra una ROM
+def migrar_cache_renombrado(ruta_games, nombre_viejo, nombre_nuevo):
+    viejo_dir = obtener_cache_dir(ruta_games, nombre_viejo)
+    nuevo_dir = obtener_cache_dir(ruta_games, nombre_nuevo)
+    if os.path.isdir(viejo_dir) and not os.path.exists(nuevo_dir):
+        try:
+            os.rename(viejo_dir, nuevo_dir)
+        except OSError:
+            pass
+
+
+# Esta funcion devuelve el directorio de caché para un juego concreto,
 # basado en la ruta de los juegos y el nombre del archivo ROM,
 def obtener_cache_dir(ruta_games, nombre_archivo):
     base = os.path.splitext(nombre_archivo)[0]

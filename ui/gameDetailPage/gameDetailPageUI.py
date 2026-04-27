@@ -30,6 +30,8 @@ class GameDetailPageUI:
         self.gallery_container = None
         self.gallery_layout = None
         self.loading_label = None
+        self.playtime_label = None
+        self.last_played_label = None
 
     def setupUi(self, widget):
         widget.setObjectName("gameDetailPage")
@@ -145,12 +147,26 @@ class GameDetailPageUI:
 
         right_panel.addLayout(columns)
 
-        # Botón Jugar (sencillo)
+        # Botón Jugar + estadísticas de tiempo
         btn_row = QHBoxLayout()
+        btn_row.setSpacing(16)
         self.btn_jugar = QPushButton("▶  Jugar")
         self.btn_jugar.setObjectName("detailPlayBtn")
         self.btn_jugar.setCursor(Qt.CursorShape.PointingHandCursor)
         btn_row.addWidget(self.btn_jugar)
+
+        stats_widget = QWidget()
+        stats_col = QVBoxLayout(stats_widget)
+        stats_col.setSpacing(1)
+        stats_col.setContentsMargins(0, 0, 0, 0)
+        self.playtime_label = QLabel()
+        self.playtime_label.setObjectName("detailPlaytime")
+        stats_col.addWidget(self.playtime_label)
+        self.last_played_label = QLabel()
+        self.last_played_label.setObjectName("detailLastPlayed")
+        stats_col.addWidget(self.last_played_label)
+        btn_row.addWidget(stats_widget, alignment=Qt.AlignmentFlag.AlignVCenter)
+
         btn_row.addStretch()
         right_panel.addLayout(btn_row)
 

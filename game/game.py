@@ -1,8 +1,10 @@
 import os
 import json
 import struct       # Para leer datos binarios de las ROMs (offsets, paletas, etc.)
+import datetime
 
 from lista import Lista
+from api.screenscraper import migrar_cache_renombrado
 
 # Intentar importar PIL (Pillow) para la extracción de iconos.
 # Si no está instalado, la funcionalidad de iconos se desactiva.
@@ -32,6 +34,13 @@ EXTENSIONES_VALIDAS = set(EXTENSION_CORE_MAP.keys())
 _NOMBRES_PATH = None
 # Ruta al directorio donde se almacenan los iconos extraídos de las ROMs
 _ICONOS_DIR = None
+# Ruta al fichero de estadísticas de juego (se rellena en escanear_juegos)
+_STATS_PATH = None
+
+_MESES_ES = [
+    "enero", "febrero", "marzo", "abril", "mayo", "junio",
+    "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre",
+]
 
 
 # Carga el diccionario {nombre_archivo: titulo_custom} desde el JSON de nombres
@@ -48,6 +57,37 @@ def _guardar_nombres(nombres):
     if _NOMBRES_PATH:
         with open(_NOMBRES_PATH, "w", encoding="utf-8") as f:
             json.dump(nombres, f, ensure_ascii=False, indent=2)
+
+
+# Carga el diccionario de estadísticas desde stats.json en la carpeta de juegos
+def _cargar_stats(ruta_games):
+    path = os.path.join(ruta_games, "stats.json")
+    if os.path.exists(path):
+        with open(path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    return {}
+
+
+# Guarda el diccionario de estadísticas en stats.json
+def _guardar_stats(stats):
+    if _STATS_PATH:
+        with open(_STATS_PATH, "w", encoding="utf-8") as f:
+            json.dump(stats, f, ensure_ascii=False, indent=2)
+
+
+# Formatea segundos jugados: < 3600 → minutos, >= 3600 → horas con 1 decimal
+def formatear_tiempo(segundos):
+    if segundos < 3600:
+        return f"{int(segundos // 60)} min"
+    return f"{segundos / 3600:.1f} h"
+
+
+# Formatea un timestamp ISO a "día mes año" en español
+def formatear_ultima_vez(iso_str):
+    if not iso_str:
+        return "Nunca jugado"
+    dt = datetime.datetime.fromisoformat(iso_str)
+    return f"{dt.day} {_MESES_ES[dt.month - 1]} {dt.year}"
 
 
 # ---------------------------------------------------------------------------
@@ -331,6 +371,8 @@ def extraer_titulo_rom(ruta_rom, extension):
 class Game:
     # Diccionario compartido por todas las instancias para almacenar nombres personalizados
     _nombres_custom = {}
+    # Diccionario de estadísticas: nombre_archivo → {tiempo_jugado, ultima_vez}
+    _stats = {}
 
     # Constructor: recibe la ruta al archivo ROM y la carpeta de cores
     def __init__(self, ruta_juego, ruta_cores):
@@ -367,6 +409,23 @@ class Game:
         else:
             Game._nombres_custom.pop(self.nombre_archivo, None)
         _guardar_nombres(Game._nombres_custom)
+
+    # Devuelve el total de segundos jugados para este juego
+    @property
+    def tiempo_jugado(self):
+        return Game._stats.get(self.nombre_archivo, {}).get("tiempo_jugado", 0.0)
+
+    # Devuelve el timestamp ISO de la última sesión, o None si nunca se ha jugado
+    @property
+    def ultima_vez_jugado(self):
+        return Game._stats.get(self.nombre_archivo, {}).get("ultima_vez", None)
+
+    # Acumula segundos a las stats del juego y guarda la fecha actual como última sesión
+    def registrar_sesion(self, segundos):
+        entrada = Game._stats.setdefault(self.nombre_archivo, {})
+        entrada["tiempo_jugado"] = entrada.get("tiempo_jugado", 0.0) + segundos
+        entrada["ultima_vez"] = datetime.datetime.now().isoformat()
+        _guardar_stats(Game._stats)
 
     # Detecta la consola según la extensión del archivo ROM
     def _detectar_consola(self):
@@ -419,7 +478,8 @@ class Game:
             nuevo_por_ext.setdefault(ext, []).append(f)
 
         iconos_dir = os.path.join(ruta_games, "icons")
-        cambios = False
+        cambios_nombres = False
+        cambios_stats = False
 
         for ext, lista_elim in elim_por_ext.items():
             lista_nuevo = nuevo_por_ext.get(ext, [])
@@ -431,7 +491,12 @@ class Game:
                 # Migrar nombre personalizado del archivo viejo al nuevo
                 if viejo in Game._nombres_custom:
                     Game._nombres_custom[nuevo] = Game._nombres_custom.pop(viejo)
-                    cambios = True
+                    cambios_nombres = True
+
+                # Migrar estadísticas de tiempo jugado al nuevo nombre de archivo
+                if viejo in Game._stats:
+                    Game._stats[nuevo] = Game._stats.pop(viejo)
+                    cambios_stats = True
 
                 # Migrar archivo de icono al nuevo nombre
                 viejo_png = os.path.splitext(viejo)[0] + ".png"
@@ -447,20 +512,27 @@ class Game:
                 # Migrar la asignación de lista al nuevo nombre de archivo
                 Lista.migrar_renombrado(viejo, nuevo)
 
-        if cambios:
+                # Migrar la caché de metadatos del scraper al nuevo nombre
+                migrar_cache_renombrado(ruta_games, viejo, nuevo)
+
+        if cambios_nombres:
             _guardar_nombres(Game._nombres_custom)
+        if cambios_stats:
+            _guardar_stats(Game._stats)
 
     # Escanea la carpeta de juegos y devuelve una lista de objetos Game.
     # Inicializa las rutas globales, carga nombres personalizados y listas,
     # y extrae los iconos de cada ROM encontrada.
     @staticmethod
     def escanear_juegos(ruta_games, ruta_cores):
-        global _NOMBRES_PATH, _ICONOS_DIR
+        global _NOMBRES_PATH, _ICONOS_DIR, _STATS_PATH
         _NOMBRES_PATH = os.path.join(ruta_games, "nombres.json")
         _ICONOS_DIR = os.path.join(ruta_games, "icons")
+        _STATS_PATH = os.path.join(ruta_games, "stats.json")
         os.makedirs(_ICONOS_DIR, exist_ok=True)
-        # Cargar nombres personalizados y listas desde disco
+        # Cargar nombres personalizados, listas y estadísticas desde disco
         Game._nombres_custom = _cargar_nombres(ruta_games)
+        Game._stats = _cargar_stats(ruta_games)
         Lista.cargar(ruta_games)
 
         juegos = []

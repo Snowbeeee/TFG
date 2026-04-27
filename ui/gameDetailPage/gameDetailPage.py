@@ -9,7 +9,7 @@ from api.screenscraper import (
     ScreenScraperAPI, cargar_info_cache, guardar_info_cache,
     obtener_cache_dir, obtener_ruta_portada, obtener_rutas_galeria,
 )
-from game.game import extraer_titulo_rom
+from game.game import extraer_titulo_rom, formatear_tiempo, formatear_ultima_vez
 from lista import Lista, SIN_LISTA
 
 
@@ -130,6 +130,7 @@ class GameDetailPage(QWidget):
             print(f"[ScreenScraper] Sin caché para '{juego.nombre_archivo}', llamando a la API…")
             # Datos básicos mientras se busca
             self.ui.titulo_label.setText(juego.titulo)
+            self._actualizar_stats(juego)
             self.ui.consola_label.setText(f"🎮  {juego.consola}")
             self.ui.descripcion_label.setText("")
             self.ui.generos_label.setText("")
@@ -169,8 +170,13 @@ class GameDetailPage(QWidget):
 
     # ── Presentación ──
 
+    def _actualizar_stats(self, juego):
+        self.ui.playtime_label.setText(f"⏱  Tiempo jugado: {formatear_tiempo(juego.tiempo_jugado)}")
+        self.ui.last_played_label.setText(f"🗓  Jugado por última vez: {formatear_ultima_vez(juego.ultima_vez_jugado)}")
+
     def _mostrar_info(self, info, juego):
         self.ui.titulo_label.setText(juego.titulo)
+        self._actualizar_stats(juego)
         self.ui.set_info(info)
         portada = obtener_ruta_portada(self.ruta_games, juego.nombre_archivo)
         self.ui.set_cover(portada)

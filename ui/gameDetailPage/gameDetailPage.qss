@@ -131,6 +131,18 @@ QLabel#detailNoImages {
     font-size: 14px;
 }
 
+/* Estadísticas de juego (junto al botón Jugar) */
+QLabel#detailPlaytime {
+    color: #f39c12;
+    font-size: 13px;
+    font-weight: bold;
+}
+
+QLabel#detailLastPlayed {
+    color: #95a5a6;
+    font-size: 12px;
+}
+
 /* Loading */
 QLabel#detailLoading {
     color: #f39c12;
