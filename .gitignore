@@ -7,7 +7,6 @@ games/
 /system/Citra/sdmc/
 /system/Citra/shaders/
 /system/Citra/sysdata/
-/build.bat
 /config.json
 
 # Byte-compiled / optimized / DLL files
