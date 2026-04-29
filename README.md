@@ -30,7 +30,7 @@ Emulator Frontend es un lanzador de juegos que actúa como intermediario entre t
 
 ---
 
-## Instalación
+## Instalación (Windows)
 
 **1. Clona el repositorio**
 
@@ -39,13 +39,7 @@ git clone https://github.com/Snowbeeee/TFG.git
 cd TFG
 ```
 
-**2. Instala las dependencias**
-
-```bash
-pip install PyQt6 PyOpenGL Pillow pyaudio pygame requests
-```
-
-**3. Añade los cores y las ROMs**
+**2. Añade los cores y las ROMs**
 
 ```
 cores/           ← archivos .dll de libretro
@@ -53,13 +47,13 @@ games/           ← tus ROMs (.nds, .3ds...)
 system/          ← archivos de sistema del emulador si son necesarios
 ```
 
-**4. Compila el ejecutable**
+**3. Ejecuta el script de compilación**
 
 ```bash
 build.bat
 ```
 
-El ejecutable se genera en `dist/TFG/TFG.exe`.
+El script instala las dependencias automáticamente y genera el ejecutable en `dist/TFG/TFG.exe`.
 
 ---
 

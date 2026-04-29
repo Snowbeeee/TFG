@@ -4,7 +4,33 @@ REM  build.bat – Genera el .exe y crea los junctions necesarios
 REM  Uso:  build.bat          (desde la raíz del proyecto)
 REM ============================================================
 
-echo [1/3] Compilando con PyInstaller...
+echo [1/3] Comprobando Python...
+python --version >nul 2>&1
+if %ERRORLEVEL% neq 0 (
+    echo Python no encontrado. Descargando instalador...
+    powershell -Command "Invoke-WebRequest -Uri 'https://www.python.org/ftp/python/3.11.9/python-3.11.9-amd64.exe' -OutFile 'python_installer.exe'"
+    if %ERRORLEVEL% neq 0 (
+        echo ERROR: No se pudo descargar Python. Comprueba tu conexion a internet.
+        pause
+        exit /b 1
+    )
+    echo Instalando Python...
+    python_installer.exe /quiet InstallAllUsers=0 PrependPath=1 Include_test=0
+    del python_installer.exe
+    echo Python instalado. Reinicia el script para continuar.
+    pause
+    exit /b 0
+)
+
+echo [2/3] Instalando dependencias...
+pip install PyQt6 PyOpenGL Pillow pyaudio pygame requests pyinstaller
+if %ERRORLEVEL% neq 0 (
+    echo ERROR: pip falló.
+    pause
+    exit /b 1
+)
+
+echo [3/3] Compilando con PyInstaller...
 pyinstaller main.spec --noconfirm
 if %ERRORLEVEL% neq 0 (
     echo ERROR: PyInstaller falló.
@@ -12,7 +38,7 @@ if %ERRORLEVEL% neq 0 (
     exit /b 1
 )
 
-echo [2/3] Creando junctions a las carpetas externas...
+echo [4/4] Creando junctions a las carpetas externas...
 set DIST=dist\TFG
 
 REM Eliminar junctions/carpetas anteriores si existen
@@ -29,7 +55,7 @@ mklink /J "%DIST%\system" "%~dp0system"
 REM Copiar config.json (archivo normal, no junction)
 if exist config.json copy /Y config.json "%DIST%\config.json" >nul
 
-echo [3/3] Listo!
+echo Listo!
 echo.
 echo   Ejecutable: %DIST%\TFG.exe
 echo   Las carpetas games/, saves/, cores/ y system/ son junctions
