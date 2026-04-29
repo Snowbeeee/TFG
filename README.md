@@ -1,6 +1,6 @@
 # Emulator Frontend
 
-Una interfaz gráfica de escritorio para gestionar y lanzar juegos de **Nintendo DS**, **Nintendo 3DS** y **GameCube**, construida con PyQt6 y libretro.
+Una interfaz gráfica de escritorio para gestionar y lanzar juegos de **Nintendo DS** y **Nintendo 3DS**, construida con PyQt6 y libretro.
 
 ---
 
@@ -17,7 +17,7 @@ Emulator Frontend es un lanzador de juegos que actúa como intermediario entre t
 - **Estadísticas de juego**: tiempo total jugado y fecha de última sesión
 - **Configuración de controles** por emulador (teclado y mando)
 - **Ajustes gráficos y de audio** en tiempo real sin necesidad de reiniciar
-- Lanzamiento directo de juegos con los cores de melonDS, Citra y Dolphin
+- Lanzamiento directo de juegos con los cores de melonDS y Citra
 
 ---
 
@@ -27,56 +27,10 @@ Emulator Frontend es un lanzador de juegos que actúa como intermediario entre t
 |---|---|---|
 | Nintendo DS | melonDS | `.nds` |
 | Nintendo 3DS | Citra | `.3ds` |
-| GameCube | Dolphin | `.iso` `.gcm` `.wbfs` |
-
----
-
-## Capturas de pantalla
-
-> *(próximamente)*
-
----
-
-## Requisitos
-
-- **Windows 10/11** (64 bits)
-- **Python 3.9+** (solo si ejecutas desde el código fuente)
-- Cores de libretro (`.dll`) para cada sistema que quieras emular
-- Archivos de sistema del emulador (BIOS/firmware) cuando sean necesarios
-
-### Dependencias Python
-
-```
-PyQt6
-PyOpenGL
-Pillow
-pyaudio
-pygame
-requests
-```
 
 ---
 
 ## Instalación
-
-### Opción 1 — Ejecutable compilado (recomendado)
-
-1. Descarga la última versión desde [Releases](../../releases)
-2. Extrae el archivo `.zip`
-3. Coloca tus cores en la carpeta `cores/`:
-   ```
-   cores/
-   ├── melonds_libretro.dll
-   ├── citra_libretro.dll
-   └── dolphin_libretro.dll
-   ```
-4. Coloca tus ROMs en la carpeta `games/`
-5. Si los emuladores lo requieren, añade los archivos de sistema en `system/`
-6. Ejecuta `TFG.exe`
-
----
-
-### Opción 2 — Desde el código fuente
 
 **1. Clona el repositorio**
 
@@ -95,19 +49,11 @@ pip install PyQt6 PyOpenGL Pillow pyaudio pygame requests
 
 ```
 cores/           ← archivos .dll de libretro
-games/           ← tus ROMs (.nds, .3ds, .iso...)
+games/           ← tus ROMs (.nds, .3ds...)
 system/          ← archivos de sistema del emulador si son necesarios
 ```
 
-**4. Ejecuta la aplicación**
-
-```bash
-python main.py
-```
-
----
-
-### Opción 3 — Compilar el ejecutable tú mismo
+**4. Compila el ejecutable**
 
 ```bash
 build.bat
@@ -165,4 +111,4 @@ Distribuido bajo la licencia **GNU GPL v3**. Consulta el archivo [LICENSE](LICEN
 
 ---
 
-> Este proyecto fue desarrollado como Trabajo de Fin de Grado (TFG).
+> Trabajo de Fin de Grado (TFG) para el Grado en Ingeniería del Software en la Universidad de Málaga (UMA).
