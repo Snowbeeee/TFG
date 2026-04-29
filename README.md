@@ -39,21 +39,19 @@ git clone https://github.com/Snowbeeee/TFG.git
 cd TFG
 ```
 
-**2. Añade los cores y las ROMs**
-
-```
-cores/           ← archivos .dll de libretro
-games/           ← tus ROMs (.nds, .3ds...)
-system/          ← archivos de sistema del emulador si son necesarios
-```
-
-**3. Ejecuta el script de compilación**
+**2. Ejecuta el script de compilación**
 
 ```bash
 build.bat
 ```
 
 El script instala las dependencias automáticamente y genera el ejecutable en `dist/TFG/TFG.exe`.
+
+**3. Añade tus ROMs**
+
+```
+games/           ← tus ROMs (.nds, .3ds...)
+```
 
 ---
 
