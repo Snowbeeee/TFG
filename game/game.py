@@ -107,7 +107,7 @@ def _morton_xy(i):
 # junto con una paleta de 16 colores en formato RGB555.
 def _extraer_icono_nds(ruta_rom, ruta_destino):
     try:
-        with open(ruta_rom, 'rb') as f:
+        with open(os.path.realpath(ruta_rom), 'rb') as f:
             # Leer el offset del banner desde la cabecera del NDS (posición 0x68).
             # f.seek() mueve el cursor del archivo a esa posición.
             # struct.unpack('<I', ...) lee 4 bytes y los interpreta como un entero
@@ -168,7 +168,7 @@ def _extraer_icono_nds(ruta_rom, ruta_destino):
 # con orden Morton (Z-order curve) para recorrer los píxeles.
 def _extraer_icono_3ds(ruta_rom, ruta_destino):
     try:
-        with open(ruta_rom, 'rb') as f:
+        with open(os.path.realpath(ruta_rom), 'rb') as f:
             # Detectar si la ROM es NCSD (dump de cartucho completo) o NCCH (partición directa).
             # f.seek(0x100) mueve al offset donde está el magic number del formato.
             # f.read(4) lee los 4 bytes del identificador.
@@ -278,7 +278,7 @@ def _extraer_icono(juego):
 # 3DS: lee el título largo en inglés (UTF-16LE) del SMDH.
 def extraer_titulo_rom(ruta_rom, extension):
     try:
-        with open(ruta_rom, 'rb') as f:
+        with open(os.path.realpath(ruta_rom), 'rb') as f:
             if extension == '.nds':
                 # El banner NDS tiene títulos en 6 idiomas a partir del offset 0x240:
                 # 0x240=JP, 0x340=EN, 0x440=FR, 0x540=DE, 0x640=IT, 0x740=ES
