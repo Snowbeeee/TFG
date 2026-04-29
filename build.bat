@@ -38,7 +38,11 @@ if %ERRORLEVEL% neq 0 (
     exit /b 1
 )
 
-echo [4/4] Creando junctions a las carpetas externas...
+echo [4/4] Creando carpetas necesarias si no existen...
+if not exist games mkdir games
+if not exist system mkdir system
+
+echo [5/5] Creando junctions a las carpetas externas...
 set DIST=dist\TFG
 
 REM Eliminar junctions/carpetas anteriores si existen

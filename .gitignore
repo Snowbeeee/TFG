@@ -1,12 +1,10 @@
 saves/
-games/
+games/*
+!games/.gitkeep
+system/*
+!system/.gitkeep
 .vscode/
 .idea/
-/system/melonds/
-/system/melonDS DS/
-/system/Citra/sdmc/
-/system/Citra/shaders/
-/system/Citra/sysdata/
 /config.json
 
 # Byte-compiled / optimized / DLL files
