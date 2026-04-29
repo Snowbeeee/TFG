@@ -84,9 +84,12 @@ class MainWindow(QMainWindow):
 
         base = _get_base_path()
 
-        # Escanear juegos
+        # Crear directorios necesarios si no existen
         ruta_games = os.path.join(base, "games")
         ruta_cores = os.path.join(base, "cores")
+        os.makedirs(ruta_games, exist_ok=True)
+        os.makedirs(ruta_cores, exist_ok=True)
+
         self.juegos = Game.escanear_juegos(ruta_games, ruta_cores)
 
         # Usar portadas cacheadas como imagen de la carta
