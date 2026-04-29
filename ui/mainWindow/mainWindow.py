@@ -2,7 +2,8 @@
 import os
 import json
 import shutil  # Para copiar archivos ROM al hacer drag & drop
-from PyQt6.QtWidgets import QMainWindow, QMenu, QFileDialog
+from PyQt6.QtWidgets import QMainWindow, QMenu, QFileDialog, QLabel
+from PyQt6.QtGui import QPixmap
 # QFileSystemWatcher: observa cambios en directorios/archivos del sistema
 from PyQt6.QtCore import QFileSystemWatcher, Qt
 from ui.mainWindow.mainWindowUI import MainWindowUI
@@ -159,6 +160,7 @@ class MainWindow(QMainWindow):
         self.ui.stackedWidget.addWidget(self.detail_page)  # index 4
         self.detail_page.jugar_signal.connect(self._jugar)
         self.detail_page.volver_signal.connect(self._volver_menu)
+        self.detail_page.portada_actualizada.connect(self._on_portada_actualizada)
 
         # Sincronizar game sidebar → config page
         self.game_page.sidebar.volumen_cambiado.connect(self._on_game_sidebar_volume)
@@ -410,6 +412,21 @@ class MainWindow(QMainWindow):
             if nombre_lista:
                 Lista.crear_lista(nombre_lista)
                 self._mostrar_todos()
+
+    # Actualiza la imagen de la carta del grid cuando llega la portada de ScreenScraper
+    def _on_portada_actualizada(self, juego):
+        for carta, j in self.cartas_juego.items():
+            if j is juego:
+                imagen_label = carta.findChild(QLabel, "gameCardImage")
+                if imagen_label and juego.imagen and os.path.exists(juego.imagen):
+                    pixmap = QPixmap(juego.imagen).scaled(
+                        200, 200,
+                        Qt.AspectRatioMode.KeepAspectRatio,
+                        Qt.TransformationMode.SmoothTransformation,
+                    )
+                    imagen_label.setPixmap(pixmap)
+                    imagen_label.setText("")
+                break
 
     # Abre la página de detalle de un juego (con info de ScreenScraper)
     def _mostrar_detalle(self, juego):

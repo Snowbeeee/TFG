@@ -754,26 +754,6 @@ class RetroCore:
             if not os.path.exists("./system"):
                 os.makedirs("./system")
             
-            # Solución para melonDS que crea carpeta "melonDS DS" (con espacio):
-            # 1. Crear carpeta "melonds" (sin espacio)
-            # 2. Crear symlink "melonDS DS" -> "melonds" para que el core escriba en la carpeta correcta
-            melonds_ds_path = os.path.abspath("./system/melonDS DS")
-            melonds_path = os.path.abspath("./system/melonds")
-            
-            # Crear carpeta melonds si no existe
-            if not os.path.exists(melonds_path):
-                os.makedirs(melonds_path)
-            
-            # Crear symlink: "melonDS DS" -> "melonds" (para que el core la encuentre)
-            if not os.path.exists(melonds_ds_path):
-                try:
-                    # os.symlink(target, link) -> crea link que apunta a target
-                    os.symlink(melonds_path, melonds_ds_path, target_is_directory=True)
-                    print(f"Symlink creado: {melonds_ds_path} -> {melonds_path}")
-                except (OSError, NotImplementedError) as e:
-                    # En sistemas antiguos o con permisos limitados, fallback: solo crear carpeta
-                    print(f"No se pudo crear symlink ({e}), usando carpeta normal")
-            
             # Escribir la ruta en el puntero que nos pasa el core
             p_str = ctypes.cast(data, ctypes.POINTER(ctypes.c_char_p))
             p_str[0] = sys_dir

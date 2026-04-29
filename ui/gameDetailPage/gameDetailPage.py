@@ -89,8 +89,9 @@ class _ScraperWorker(QThread):
 # (portada, descripción, géneros, galería) y permite lanzar el juego.
 class GameDetailPage(QWidget):
 
-    jugar_signal = pyqtSignal(object)  # Emite el objeto Game al pulsar Jugar
-    volver_signal = pyqtSignal()       # Emite al pulsar Volver
+    jugar_signal = pyqtSignal(object)        # Emite el objeto Game al pulsar Jugar
+    volver_signal = pyqtSignal()             # Emite al pulsar Volver
+    portada_actualizada = pyqtSignal(object) # Emite el juego cuando se descarga su portada
 
     def __init__(self, api, ruta_games, parent=None):
         super().__init__(parent)
@@ -163,6 +164,7 @@ class GameDetailPage(QWidget):
         portada = obtener_ruta_portada(self.ruta_games, juego.nombre_archivo)
         if portada:
             juego.imagen = portada
+            self.portada_actualizada.emit(juego)
 
     def _on_api_error(self, msg):
         self.ui.mostrar_cargando(False)
