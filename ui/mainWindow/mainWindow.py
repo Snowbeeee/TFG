@@ -5,7 +5,7 @@ import shutil  # Para copiar archivos ROM al hacer drag & drop
 from PyQt6.QtWidgets import QMainWindow, QMenu, QFileDialog, QLabel
 from PyQt6.QtGui import QPixmap
 # QFileSystemWatcher: observa cambios en directorios/archivos del sistema
-from PyQt6.QtCore import QFileSystemWatcher, Qt
+from PyQt6.QtCore import QFileSystemWatcher, QTimer, Qt
 from ui.mainWindow.mainWindowUI import MainWindowUI
 from ui.gameWindow.gameWindow import GameWindow
 from ui.configWindow.configWindow import ConfigWindow
@@ -16,7 +16,7 @@ from ui.popups.popupAnadir.popupAnadir import PopupAnadir
 from ui.gameDetailPage.gameDetailPage import GameDetailPage
 from game.game import Game, extraer_titulo_rom, EXTENSIONES_VALIDAS
 from lista import Lista, SIN_LISTA
-from api.screenscraper import ScreenScraperAPI, obtener_ruta_portada
+from api.screenscraper import ScreenScraperAPI, obtener_ruta_portada, cargar_info_cache
 
 
 # Devuelve la ruta a un recurso empaquetado (ej: archivos QSS dentro de ui/).
@@ -223,10 +223,32 @@ class MainWindow(QMainWindow):
     def _renombrar_juego(self, juego, nuevo_titulo):
         juego.titulo = nuevo_titulo
 
+    # Espera a que el archivo ROM esté completamente escrito antes de scrapearlo.
+    # Comprueba el tamaño cada 500 ms; cuando es estable y el archivo se puede
+    # abrir (no está bloqueado), lanza scrape_en_background.
+    def _esperar_archivo_listo(self, juego, tamano_anterior=None):
+        try:
+            tamano_actual = os.path.getsize(juego.ruta_juego)
+        except OSError:
+            QTimer.singleShot(500, lambda j=juego: self._esperar_archivo_listo(j))
+            return
+
+        if tamano_anterior is not None and tamano_actual == tamano_anterior:
+            try:
+                with open(juego.ruta_juego, 'rb'):
+                    pass
+            except PermissionError:
+                QTimer.singleShot(500, lambda j=juego, t=tamano_actual: self._esperar_archivo_listo(j, t))
+                return
+            self.detail_page.scrape_en_background(juego)
+        else:
+            QTimer.singleShot(500, lambda j=juego, t=tamano_actual: self._esperar_archivo_listo(j, t))
+
     # Re-escanea la carpeta games/ y reconstruye el grid de cartas.
     # Se ejecuta automáticamente cuando QFileSystemWatcher detecta un cambio.
     def _on_games_folder_changed(self):
         archivos_nuevos = Game.obtener_archivos_rom(self._ruta_games)
+        nuevos_nombres = archivos_nuevos - self._archivos_actuales
         Game.migrar_renombrados(self._ruta_games, self._archivos_actuales, archivos_nuevos)
         self._archivos_actuales = archivos_nuevos
         self.juegos = Game.escanear_juegos(self._ruta_games, self._ruta_cores)
@@ -239,6 +261,10 @@ class MainWindow(QMainWindow):
         )
         self._conectar_cartas()
         self._poblar_sidebar()
+        for juego in self.juegos:
+            if juego.nombre_archivo in nuevos_nombres:
+                if not cargar_info_cache(self._ruta_games, juego.nombre_archivo):
+                    self._esperar_archivo_listo(juego)
 
     # Al salir del juego redirige a la página de detalle de ese juego
     def _volver_desde_juego(self, juego):

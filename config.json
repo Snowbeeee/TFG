@@ -7,64 +7,52 @@
   "screenscraper_devpassword": "WDPeqVq3GeQ",
   "controls_ds": {
     "a": {
-      "type": "gamepad_button",
-      "value": 0
+      "type": "key",
+      "value": 88
     },
     "b": {
-      "type": "gamepad_button",
-      "value": 1
+      "type": "key",
+      "value": 90
     },
     "x": {
-      "type": "gamepad_button",
-      "value": 2
+      "type": "key",
+      "value": 83
     },
     "y": {
-      "type": "gamepad_button",
-      "value": 3
+      "type": "key",
+      "value": 65
     },
     "l": {
-      "type": "gamepad_button",
-      "value": 4
+      "type": "key",
+      "value": 81
     },
     "r": {
-      "type": "gamepad_button",
-      "value": 5
+      "type": "key",
+      "value": 87
     },
     "start": {
-      "type": "gamepad_button",
-      "value": 7
+      "type": "key",
+      "value": 16777220
     },
     "select": {
-      "type": "gamepad_button",
-      "value": 6
+      "type": "key",
+      "value": 16777248
     },
     "up": {
-      "type": "gamepad_hat",
-      "value": 0,
-      "hat": 0,
-      "hx": 0,
-      "hy": 1
+      "type": "key",
+      "value": 16777235
     },
     "down": {
-      "type": "gamepad_hat",
-      "value": 0,
-      "hat": 0,
-      "hx": 0,
-      "hy": -1
+      "type": "key",
+      "value": 16777237
     },
     "left": {
-      "type": "gamepad_hat",
-      "value": 0,
-      "hat": 0,
-      "hx": -1,
-      "hy": 0
+      "type": "key",
+      "value": 16777234
     },
     "right": {
-      "type": "gamepad_hat",
-      "value": 0,
-      "hat": 0,
-      "hx": 1,
-      "hy": 0
+      "type": "key",
+      "value": 16777236
     }
   },
   "controls_3ds": {

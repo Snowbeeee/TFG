@@ -99,6 +99,7 @@ class GameDetailPage(QWidget):
         self.ruta_games = ruta_games
         self._juego_actual = None
         self._worker = None
+        self._workers_bg = []  # workers en background para juegos nuevos
 
         self.ui = GameDetailPageUI()
         self.ui.setupUi(self)
@@ -155,6 +156,30 @@ class GameDetailPage(QWidget):
                 lambda info_dict: self._on_api_ok(info_dict, juego))
             self._worker.error.connect(self._on_api_error)
             self._worker.start()
+
+    # Llama a la API en background para un juego recién detectado (sin modificar la UI).
+    # Úsalo cuando se detecta un juego nuevo sin caché; el click en la carta sigue
+    # usando mostrar_juego() por si el usuario borró la carpeta de caché.
+    def scrape_en_background(self, juego):
+        titulo_rom = extraer_titulo_rom(juego.ruta_juego, juego.extension)
+        nombre_busqueda = titulo_rom if titulo_rom else juego.titulo
+        worker = _ScraperWorker(
+            self.api, nombre_busqueda, juego.extension,
+            self.ruta_games, juego.nombre_archivo, juego.ruta_juego,
+        )
+        worker.terminado.connect(lambda info, j=juego: self._on_bg_ok(info, j))
+        worker.error.connect(
+            lambda msg, j=juego: print(f"[ScreenScraper] Error background '{j.nombre_archivo}': {msg}")
+        )
+        worker.finished.connect(lambda w=worker: self._workers_bg.remove(w) if w in self._workers_bg else None)
+        self._workers_bg.append(worker)
+        worker.start()
+
+    def _on_bg_ok(self, info, juego):
+        portada = obtener_ruta_portada(self.ruta_games, juego.nombre_archivo)
+        if portada:
+            juego.imagen = portada
+            self.portada_actualizada.emit(juego)
 
     # ── Callbacks de la API ──
 

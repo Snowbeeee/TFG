@@ -54,8 +54,14 @@ class ScreenScraperAPI:
         md5 = hashlib.md5()
         sha1 = hashlib.sha1()
         
+        try:
+            f = open(ruta_rom, 'rb')
+        except PermissionError:
+            print(f"[ScreenScraper] Archivo '{nombre_rom}' aún bloqueado (copiando), saltando hash")
+            return None
+
         # Con el with se asegura de cerrar la conexión automáticamente
-        with open(ruta_rom, 'rb') as archivo_rom:
+        with f as archivo_rom:
             # Se lee el archivo en bloques de 1 MB para no cargarlo todo en memoria
             while True:
                 bloque = archivo_rom.read(1 << 20)  # 1 MB
@@ -166,7 +172,7 @@ class ScreenScraperAPI:
         if extension and extension in SYSTEM_IDS:
             extra["systemeid"] = str(SYSTEM_IDS[extension])
 
-        params = self._params_base(extra)
+        params = self._parametros_base(extra)
         
         # Construir la URL
         # urlencode se encarga de formatear los parametros para que internet lo entienda
