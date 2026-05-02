@@ -7,6 +7,7 @@ system/*
 .vscode/
 .idea/
 /config.json
+contexto/*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
