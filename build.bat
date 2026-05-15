@@ -30,10 +30,21 @@ if %ERRORLEVEL% neq 0 (
     exit /b 1
 )
 
+REM Comprobar si TFG.exe está en uso antes de compilar
+if exist TFG.exe (
+    del /F TFG.exe >nul 2>&1
+    if exist TFG.exe (
+        echo ERROR: TFG.exe esta en uso. Cierra la aplicacion o espera a que el
+        echo antivirus termine de analizarlo e intentalo de nuevo.
+        pause
+        exit /b 1
+    )
+)
+
 echo [3/3] Compilando con PyInstaller (modo onefile)...
 pyinstaller main.spec --noconfirm --distpath .
 if %ERRORLEVEL% neq 0 (
-    echo ERROR: PyInstaller falló.
+    echo ERROR: PyInstaller fallo.
     pause
     exit /b 1
 )

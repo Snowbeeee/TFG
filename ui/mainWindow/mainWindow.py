@@ -172,7 +172,9 @@ class MainWindow(QMainWindow):
         # Mostrar la ruta de games en el label
         self.ui.games_path_label.setText(f"Ruta de juegos: {os.path.abspath(ruta_games)}")
         self._archivos_actuales = Game.obtener_archivos_rom(ruta_games)
-        self._watcher = QFileSystemWatcher([ruta_games], self)
+        scraper_cache_dir = os.path.join(ruta_games, "scraper_cache")
+        os.makedirs(scraper_cache_dir, exist_ok=True)
+        self._watcher = QFileSystemWatcher([ruta_games, scraper_cache_dir], self)
         self._watcher.directoryChanged.connect(self._on_games_folder_changed)
 
         # Conectar navegación de la cabecera
@@ -439,10 +441,13 @@ class MainWindow(QMainWindow):
                 Lista.crear_lista(nombre_lista)
                 self._mostrar_todos()
 
-    # Actualiza la imagen de la carta del grid cuando llega la portada de ScreenScraper
+    # Actualiza la imagen de la carta del grid cuando llega la portada de ScreenScraper.
+    # Se compara por nombre_archivo (no por identidad de objeto) porque el
+    # QFileSystemWatcher puede recrear los objetos Game mientras el scraper trabaja.
     def _on_portada_actualizada(self, juego):
         for carta, j in self.cartas_juego.items():
-            if j is juego:
+            if j.nombre_archivo == juego.nombre_archivo:
+                j.imagen = juego.imagen
                 imagen_label = carta.findChild(QLabel, "gameCardImage")
                 if imagen_label and juego.imagen and os.path.exists(juego.imagen):
                     pixmap = QPixmap(juego.imagen).scaled(
