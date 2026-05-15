@@ -1,6 +1,6 @@
 @echo off
 REM ============================================================
-REM  build.bat – Genera el .exe y crea los junctions necesarios
+REM  build.bat – Genera un único TFG.exe en bin/
 REM  Uso:  build.bat          (desde la raíz del proyecto)
 REM ============================================================
 
@@ -30,39 +30,25 @@ if %ERRORLEVEL% neq 0 (
     exit /b 1
 )
 
-echo [3/3] Compilando con PyInstaller...
-pyinstaller main.spec --noconfirm
+echo [3/3] Compilando con PyInstaller (modo onefile)...
+pyinstaller main.spec --noconfirm --distpath .
 if %ERRORLEVEL% neq 0 (
     echo ERROR: PyInstaller falló.
     pause
     exit /b 1
 )
 
-echo [4/4] Creando carpetas necesarias si no existen...
+REM Crear carpetas externas si no existen
 if not exist games mkdir games
+if not exist saves mkdir saves
+if not exist cores mkdir cores
 if not exist system mkdir system
-
-echo [5/5] Creando junctions a las carpetas externas...
-set DIST=dist\TFG
-
-REM Eliminar junctions/carpetas anteriores si existen
-for %%D in (games saves cores system) do (
-    if exist "%DIST%\%%D" rmdir "%DIST%\%%D" 2>nul
-)
-
-REM Crear junctions (no requieren permisos de admin)
-mklink /J "%DIST%\games"  "%~dp0games"
-mklink /J "%DIST%\saves"  "%~dp0saves"
-mklink /J "%DIST%\cores"  "%~dp0cores"
-mklink /J "%DIST%\system" "%~dp0system"
-
-REM Copiar config.json (archivo normal, no junction)
-if exist config.json copy /Y config.json "%DIST%\config.json" >nul
 
 echo Listo!
 echo.
-echo   Ejecutable: %DIST%\TFG.exe
-echo   Las carpetas games/, saves/, cores/ y system/ son junctions
-echo   (cualquier cambio en las originales se refleja automaticamente).
+echo   Ejecutable:  TFG.exe
+echo   ROMs:        games\
+echo   Cores:       cores\
+echo   Saves:       saves\
 echo.
 pause

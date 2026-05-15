@@ -96,8 +96,9 @@ pyz = PYZ(a.pure, cipher=block_cipher)
 exe = EXE(
     pyz,
     a.scripts,
-    [],                     # NO one-file (usamos --onedir para depurar mejor)
-    exclude_binaries=True,
+    a.binaries,             # todo empaquetado dentro del .exe (modo onefile)
+    a.datas,
+    [],
     name='TFG',
     debug=False,
     bootloader_ignore_signals=False,
@@ -110,14 +111,4 @@ exe = EXE(
     codesign_identity=None,
     entitlements_file=None,
     icon=None,
-)
-
-coll = COLLECT(
-    exe,
-    a.binaries,
-    a.datas,
-    strip=False,
-    upx=False,
-    upx_exclude=[],
-    name='TFG',
 )
