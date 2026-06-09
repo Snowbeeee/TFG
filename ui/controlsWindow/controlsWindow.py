@@ -62,14 +62,14 @@ N3DS_DEFAULTS = {
     "zr":           Qt.Key.Key_2,
     "start":        Qt.Key.Key_Return,
     "select":       Qt.Key.Key_Shift,
-    "up":           Qt.Key.Key_Up,
-    "down":         Qt.Key.Key_Down,
-    "left":         Qt.Key.Key_Left,
-    "right":        Qt.Key.Key_Right,
-    "circle_up":    Qt.Key.Key_I,
-    "circle_down":  Qt.Key.Key_K,
-    "circle_left":  Qt.Key.Key_J,
-    "circle_right": Qt.Key.Key_L,
+    "up":           Qt.Key.Key_I,
+    "down":         Qt.Key.Key_K,
+    "left":         Qt.Key.Key_J,
+    "right":        Qt.Key.Key_L,
+    "circle_up":    Qt.Key.Key_Up,
+    "circle_down":  Qt.Key.Key_Down,
+    "circle_left":  Qt.Key.Key_Left,
+    "circle_right": Qt.Key.Key_Right,
 }
 
 
