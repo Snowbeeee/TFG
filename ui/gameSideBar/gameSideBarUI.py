@@ -2,7 +2,7 @@
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout,
     QLabel, QSlider, QComboBox, QPushButton, QFrame,
-    QScrollArea, QLineEdit, QPlainTextEdit, QCheckBox
+    QScrollArea, QLineEdit, QPlainTextEdit, QCheckBox, QSizePolicy
 )
 from PyQt6.QtCore import Qt
 
@@ -142,9 +142,15 @@ class GameSideBarUI(QFrame):
 
         # ── Sección Cheats – DS ──
         self.cheatSectionWidget = QWidget()
+        # Fixed vertical: la sección NO crece cuando la ventana se maximiza.
+        # Sin esto, el QVBoxLayout reparte el espacio sobrante entre la sección
+        # y la lista (QScrollArea expandible) dejando un hueco entre el título
+        # y los items. Con Fixed la sección se ciñe a su sizeHint.
+        self.cheatSectionWidget.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
         cheatSectionLayout = QVBoxLayout(self.cheatSectionWidget)
         cheatSectionLayout.setContentsMargins(0, 0, 0, 0)
         cheatSectionLayout.setSpacing(8)
+        cheatSectionLayout.setAlignment(Qt.AlignmentFlag.AlignTop)
 
         tituloCheat = QLabel("Cheats – DS")
         tituloCheat.setObjectName("gameSideBarSectionTitle")
@@ -155,6 +161,7 @@ class GameSideBarUI(QFrame):
         scrollArea.setObjectName("cheatScrollArea")
         scrollArea.setWidgetResizable(True)
         scrollArea.setFixedHeight(110)
+        scrollArea.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
         scrollArea.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
 
         cheatListContainer = QWidget()
