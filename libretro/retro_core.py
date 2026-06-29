@@ -518,6 +518,25 @@ class RetroCore:
             print(f"[Savestate] Error al deserializar: {e}")
             return False
 
+    # Aplica la lista de cheats al núcleo usando la API libretro de cheats.
+    # Llama a retro_cheat_reset() y luego retro_cheat_set() por cada cheat.
+    def apply_cheats(self, cheats):
+        try:
+            self.lib.retro_cheat_reset.argtypes = []
+            self.lib.retro_cheat_reset.restype = None
+            self.lib.retro_cheat_set.argtypes = [ctypes.c_uint, ctypes.c_bool, ctypes.c_char_p]
+            self.lib.retro_cheat_set.restype = None
+            self.lib.retro_cheat_reset()
+            for i, cheat in enumerate(cheats):
+                code = cheat.get('code', '').strip()
+                if code:
+                    enabled = bool(cheat.get('enabled', False))
+                    self.lib.retro_cheat_set(i, enabled, code.encode('utf-8'))
+            activos = sum(1 for c in cheats if c.get('enabled') and c.get('code', '').strip())
+            print(f"[Cheats] {activos}/{len(cheats)} cheats aplicados")
+        except Exception as e:
+            print(f"[Cheats] Error aplicando cheats: {e}")
+
     # Descarga el juego actual y desinicializa el núcleo, liberando recursos.
     def unload(self):
         if not self.lib:

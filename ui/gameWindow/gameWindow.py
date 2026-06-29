@@ -37,6 +37,9 @@ class GameWindow(QWidget):
 
         # Conectar botón salir de la sidebar
         self.ui.gameSideBar.salir_clicked.connect(self._salir)
+        self.ui.gameSideBar.cheats_cambiados.connect(self._on_cheats_cambiados)
+
+        self._pending_cheats = None  # cheats a aplicar cuando el core esté listo
 
         # Performance tracking
         self._fps_frame_count = 0
@@ -75,6 +78,10 @@ class GameWindow(QWidget):
     # perf_counter: reloj monotonónico de nanosegundos, ideal para medir
     # intervalos cortos de tiempo con alta precisión.
     def _on_frame(self):
+        # Si hay cheats pendientes de aplicar, aplicarlos cuando el core esté listo
+        if self._pending_cheats is not None and self.game_widget.initialized and self.game_widget.core:
+            self.game_widget.core.apply_cheats(self._pending_cheats)
+            self._pending_cheats = None
         # Si hay un savestate pendiente (tras reload), restaurarlo ahora
         if self._pending_state and self.game_widget.initialized and self.game_widget.core:
             state = self._pending_state
@@ -113,6 +120,7 @@ class GameWindow(QWidget):
         self._juego_actual = juego
         self._session_start = time.perf_counter()
         self.ui.gameSideBar.set_consola(juego.extension)
+        self.ui.gameSideBar.cargar_cheats(juego.nombre_archivo)
         if core_options_extra:
             self.game_widget.core_options_extra = core_options_extra
         self.game_widget.load_game(juego.ruta_core, juego.ruta_juego)
@@ -169,7 +177,15 @@ class GameWindow(QWidget):
         self._fps_label.hide()
         self._juego_actual = None
         self._pending_state = None
+        self._pending_cheats = None
         self.game_widget.unload_game()
+
+    # Recibe cheats cambiados desde la sidebar. Siempre los marca como pendientes
+    # para que se apliquen ENTRE frames (justo antes de retro_run en _on_frame).
+    # Esto evita races con retro_run y crashes en DeSmuME al modificar cheats
+    # mientras el core está emulando.
+    def _on_cheats_cambiados(self, cheats):
+        self._pending_cheats = list(cheats)
 
     # Descarga el juego y emite señal con el juego que se estaba ejecutando
     def _salir(self):

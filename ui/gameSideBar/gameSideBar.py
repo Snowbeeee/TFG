@@ -1,6 +1,9 @@
 # ── Imports ──────────────────────────────────────────────────────
-from PyQt6.QtWidgets import QFrame, QVBoxLayout
-from PyQt6.QtCore import pyqtSignal
+import json
+import os
+import re
+from PyQt6.QtWidgets import QFrame, QVBoxLayout, QHBoxLayout, QCheckBox, QLabel, QPushButton, QWidget
+from PyQt6.QtCore import pyqtSignal, Qt
 from ui.gameSideBar.gameSideBarUI import GameSideBarUI
 
 
@@ -15,10 +18,14 @@ class GameSideBar(QFrame):
     volumen_cambiado = pyqtSignal(int)
     resolucion_cambiada = pyqtSignal()
     salir_clicked = pyqtSignal()
+    cheats_cambiados = pyqtSignal(list)  # emite la lista completa de cheats al cambiar
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self._syncing = False  # evitar bucles al sincronizar
+        self._cheats = []      # lista de {name, code, enabled}
+        self._rom_name = None  # nombre del archivo ROM actual (para persistencia)
+        self._editing_index = -1  # índice del cheat que se está editando (-1 = ninguno)
 
         # Layout para contener la UI
         wrapper = QVBoxLayout(self)
@@ -34,6 +41,7 @@ class GameSideBar(QFrame):
         self.ui.dsResolutionCombo.currentIndexChanged.connect(self._on_ds_resolution_changed)
         self.ui.citraResolutionCombo.currentIndexChanged.connect(self._on_citra_resolution_changed)
         self.ui.pushButtonSalir.clicked.connect(self.salir_clicked.emit)
+        self.ui.cheatAddButton.clicked.connect(self._on_add_cheat)
 
         self._actualizar_visibilidad_ds_res()
 
@@ -57,6 +65,161 @@ class GameSideBar(QFrame):
         es_3ds = extension == ".3ds"
         self.ui.dsSectionWidget.setVisible(es_ds)
         self.ui.citraSectionWidget.setVisible(es_3ds)
+        self.ui.cheatSectionWidget.setVisible(es_ds)
+
+    # Carga los cheats del archivo JSON asociado a la ROM y actualiza la lista.
+    def cargar_cheats(self, rom_name):
+        self._rom_name = rom_name
+        self._cheats = []
+        path = self._cheats_path()
+        if path and os.path.exists(path):
+            try:
+                with open(path, 'r', encoding='utf-8') as f:
+                    self._cheats = json.load(f)
+            except Exception as e:
+                print(f"[Cheats] Error cargando cheats: {e}")
+        self._rebuild_cheat_list()
+        self.cheats_cambiados.emit(list(self._cheats))
+
+    # ── Cheats internos ──
+
+    def _cheats_path(self):
+        if not self._rom_name:
+            return None
+        base = os.path.splitext(self._rom_name)[0]
+        return os.path.abspath(os.path.join("saves", base + "_cheats.json"))
+
+    def _guardar_cheats(self):
+        path = self._cheats_path()
+        if not path:
+            return
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        try:
+            with open(path, 'w', encoding='utf-8') as f:
+                json.dump(self._cheats, f, ensure_ascii=False, indent=2)
+        except Exception as e:
+            print(f"[Cheats] Error guardando cheats: {e}")
+
+    # Normaliza un código Action Replay al formato esperado por DeSmuME libretro:
+    # bloques de 8 dígitos hex separados por '+', sin espacios ni saltos de línea.
+    # Acepta entrada con espacios, saltos de línea o '+' como separadores.
+    @staticmethod
+    def _normalizar_codigo(raw):
+        # Extraer solo caracteres hex
+        hex_chars = re.sub(r'[^0-9A-Fa-f]', '', raw).upper()
+        # Cada bloque AR es de 8 dígitos. Debe haber un número par de bloques.
+        if len(hex_chars) == 0 or len(hex_chars) % 8 != 0:
+            return None
+        blocks = [hex_chars[i:i+8] for i in range(0, len(hex_chars), 8)]
+        # AR codes vienen en pares (dirección, valor). Si no es par, formato inválido.
+        if len(blocks) % 2 != 0:
+            return None
+        # Juntar pares como "AAAAAAAA BBBBBBBB" y unir con '+'
+        pares = [f"{blocks[i]} {blocks[i+1]}" for i in range(0, len(blocks), 2)]
+        return '+'.join(pares)
+
+    def _rebuild_cheat_list(self):
+        layout = self.ui.cheatListLayout
+        # Eliminar todos los widgets del layout excepto el stretch final
+        while layout.count() > 1:
+            item = layout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+
+        for i, cheat in enumerate(self._cheats):
+            row = QHBoxLayout()
+            row.setContentsMargins(0, 0, 0, 0)
+            row.setSpacing(4)
+
+            cb = QCheckBox()
+            cb.setObjectName("cheatCheckBox")
+            cb.setChecked(cheat.get('enabled', False))
+            cb.toggled.connect(lambda checked, idx=i: self._on_toggle_cheat(idx, checked))
+
+            name_label = QLabel(cheat.get('name', ''))
+            name_label.setObjectName("cheatNameLabel")
+            name_label.setToolTip(cheat.get('code', ''))
+
+            edit_btn = QPushButton("✎")
+            edit_btn.setObjectName("cheatEditButton")
+            edit_btn.setFixedSize(20, 20)
+            edit_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+            edit_btn.clicked.connect(lambda _, idx=i: self._on_edit_cheat(idx))
+
+            del_btn = QPushButton("×")
+            del_btn.setObjectName("cheatDeleteButton")
+            del_btn.setFixedSize(20, 20)
+            del_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+            del_btn.clicked.connect(lambda _, idx=i: self._on_delete_cheat(idx))
+
+            row.addWidget(cb)
+            row.addWidget(name_label, 1)
+            row.addWidget(edit_btn)
+            row.addWidget(del_btn)
+
+            row_widget = QWidget()
+            row_widget.setObjectName("cheatRow")
+            row_widget.setLayout(row)
+            layout.insertWidget(layout.count() - 1, row_widget)
+
+    def _on_add_cheat(self):
+        name = self.ui.cheatNameInput.text().strip()
+        code_raw = self.ui.cheatCodeInput.toPlainText().strip()
+        if not name or not code_raw:
+            return
+        code = self._normalizar_codigo(code_raw)
+        if code is None:
+            self.ui.cheatCodeInput.setPlaceholderText("Código inválido (deben ser pares hex de 8 dígitos)")
+            return
+
+        if self._editing_index >= 0 and self._editing_index < len(self._cheats):
+            # Modo edición: actualizar el cheat existente conservando enabled
+            prev_enabled = self._cheats[self._editing_index].get('enabled', True)
+            self._cheats[self._editing_index] = {'name': name, 'code': code, 'enabled': prev_enabled}
+        else:
+            self._cheats.append({'name': name, 'code': code, 'enabled': True})
+
+        self._cancel_edit_mode()
+        self._guardar_cheats()
+        self._rebuild_cheat_list()
+        self.cheats_cambiados.emit(list(self._cheats))
+
+    def _on_edit_cheat(self, index):
+        if not (0 <= index < len(self._cheats)):
+            return
+        c = self._cheats[index]
+        self.ui.cheatNameInput.setText(c.get('name', ''))
+        # Mostrar el código en formato legible (un par por línea)
+        code = c.get('code', '')
+        pares = code.split('+')
+        self.ui.cheatCodeInput.setPlainText('\n'.join(p.strip() for p in pares))
+        self._editing_index = index
+        self.ui.cheatAddButton.setText("Guardar Cambios")
+
+    def _cancel_edit_mode(self):
+        self._editing_index = -1
+        self.ui.cheatNameInput.clear()
+        self.ui.cheatCodeInput.clear()
+        self.ui.cheatCodeInput.setPlaceholderText("XXXXXXXX YYYYYYYY\nXXXXXXXX YYYYYYYY")
+        self.ui.cheatAddButton.setText("Añadir Cheat")
+
+    def _on_toggle_cheat(self, index, enabled):
+        if 0 <= index < len(self._cheats):
+            self._cheats[index]['enabled'] = enabled
+            self._guardar_cheats()
+            self.cheats_cambiados.emit(list(self._cheats))
+
+    def _on_delete_cheat(self, index):
+        if 0 <= index < len(self._cheats):
+            self._cheats.pop(index)
+            # Si estábamos editando este o uno posterior, ajustar
+            if self._editing_index == index:
+                self._cancel_edit_mode()
+            elif self._editing_index > index:
+                self._editing_index -= 1
+            self._guardar_cheats()
+            self._rebuild_cheat_list()
+            self.cheats_cambiados.emit(list(self._cheats))
 
     # ── Lectores (para que MainWindow lea los valores actuales) ──
 

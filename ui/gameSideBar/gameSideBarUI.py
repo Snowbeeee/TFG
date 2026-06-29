@@ -1,7 +1,8 @@
 # ── Imports ──────────────────────────────────────────────────────
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout,
-    QLabel, QSlider, QComboBox, QPushButton, QFrame
+    QLabel, QSlider, QComboBox, QPushButton, QFrame,
+    QScrollArea, QLineEdit, QPlainTextEdit, QCheckBox
 )
 from PyQt6.QtCore import Qt
 
@@ -26,6 +27,11 @@ class GameSideBarUI(QFrame):
         self.pushButtonSalir = None
         self.dsSectionWidget = None    # contenedor de toda la sección DS
         self.citraSectionWidget = None  # contenedor de toda la sección 3DS
+        self.cheatSectionWidget = None  # contenedor de la sección de cheats (DS)
+        self.cheatListLayout = None     # layout dinámico de la lista de cheats
+        self.cheatNameInput = None      # campo de nombre del nuevo cheat
+        self.cheatCodeInput = None      # área de código Action Replay
+        self.cheatAddButton = None      # botón añadir cheat
 
         self._setup_ui()
 
@@ -133,6 +139,51 @@ class GameSideBarUI(QFrame):
         citraSectionLayout.addLayout(citraResRow)
 
         layout.addWidget(self.citraSectionWidget)
+
+        # ── Sección Cheats – DS ──
+        self.cheatSectionWidget = QWidget()
+        cheatSectionLayout = QVBoxLayout(self.cheatSectionWidget)
+        cheatSectionLayout.setContentsMargins(0, 0, 0, 0)
+        cheatSectionLayout.setSpacing(8)
+
+        tituloCheat = QLabel("Cheats – DS")
+        tituloCheat.setObjectName("gameSideBarSectionTitle")
+        cheatSectionLayout.addWidget(tituloCheat)
+
+        # Lista de cheats existentes (scroll)
+        scrollArea = QScrollArea()
+        scrollArea.setObjectName("cheatScrollArea")
+        scrollArea.setWidgetResizable(True)
+        scrollArea.setFixedHeight(110)
+        scrollArea.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+
+        cheatListContainer = QWidget()
+        cheatListContainer.setObjectName("cheatListContainer")
+        self.cheatListLayout = QVBoxLayout(cheatListContainer)
+        self.cheatListLayout.setContentsMargins(4, 4, 4, 4)
+        self.cheatListLayout.setSpacing(4)
+        self.cheatListLayout.addStretch()
+        scrollArea.setWidget(cheatListContainer)
+        cheatSectionLayout.addWidget(scrollArea)
+
+        # Formulario para añadir cheat
+        self.cheatNameInput = QLineEdit()
+        self.cheatNameInput.setObjectName("cheatInput")
+        self.cheatNameInput.setPlaceholderText("Nombre del cheat")
+        cheatSectionLayout.addWidget(self.cheatNameInput)
+
+        self.cheatCodeInput = QPlainTextEdit()
+        self.cheatCodeInput.setObjectName("cheatCodeInput")
+        self.cheatCodeInput.setPlaceholderText("XXXXXXXX YYYYYYYY\nXXXXXXXX YYYYYYYY")
+        self.cheatCodeInput.setFixedHeight(58)
+        cheatSectionLayout.addWidget(self.cheatCodeInput)
+
+        self.cheatAddButton = QPushButton("Añadir Cheat")
+        self.cheatAddButton.setObjectName("cheatAddButton")
+        self.cheatAddButton.setCursor(Qt.CursorShape.PointingHandCursor)
+        cheatSectionLayout.addWidget(self.cheatAddButton)
+
+        layout.addWidget(self.cheatSectionWidget)
 
         # ── Espacio flexible ──
         layout.addStretch()

@@ -92,3 +92,111 @@ QPushButton#gameSideBarSalir {
 QPushButton#gameSideBarSalir:hover {
     background-color: #c0392b;
 }
+
+/* ── Cheats ── */
+
+QScrollArea#cheatScrollArea {
+    background-color: #162130;
+    border: 1px solid #2c3e50;
+    border-radius: 4px;
+}
+
+QWidget#cheatListContainer {
+    background-color: transparent;
+}
+
+QWidget#cheatRow {
+    background-color: transparent;
+}
+
+QCheckBox#cheatCheckBox {
+    color: #ecf0f1;
+    font-size: 12px;
+    spacing: 4px;
+}
+
+QCheckBox#cheatCheckBox::indicator {
+    width: 14px;
+    height: 14px;
+    border: 1px solid #4a6278;
+    border-radius: 3px;
+    background-color: #2c3e50;
+}
+
+QCheckBox#cheatCheckBox::indicator:checked {
+    background-color: #3498db;
+    border-color: #3498db;
+}
+
+QLabel#cheatNameLabel {
+    color: #ecf0f1;
+    font-size: 12px;
+}
+
+QPushButton#cheatEditButton {
+    background-color: #4a6278;
+    color: #ecf0f1;
+    font-size: 11px;
+    border: none;
+    border-radius: 3px;
+    padding: 0px;
+}
+
+QPushButton#cheatEditButton:hover {
+    background-color: #3498db;
+}
+
+QPushButton#cheatDeleteButton {
+    background-color: #4a6278;
+    color: #ecf0f1;
+    font-size: 12px;
+    font-weight: bold;
+    border: none;
+    border-radius: 3px;
+    padding: 0px;
+}
+
+QPushButton#cheatDeleteButton:hover {
+    background-color: #e74c3c;
+}
+
+QLineEdit#cheatInput {
+    background-color: #2c3e50;
+    color: #ecf0f1;
+    font-size: 12px;
+    padding: 4px 8px;
+    border: 1px solid #4a6278;
+    border-radius: 4px;
+}
+
+QLineEdit#cheatInput:focus {
+    border-color: #3498db;
+}
+
+QPlainTextEdit#cheatCodeInput {
+    background-color: #2c3e50;
+    color: #bdc3c7;
+    font-size: 11px;
+    font-family: monospace;
+    padding: 4px 8px;
+    border: 1px solid #4a6278;
+    border-radius: 4px;
+}
+
+QPlainTextEdit#cheatCodeInput:focus {
+    border-color: #3498db;
+}
+
+QPushButton#cheatAddButton {
+    background-color: #27ae60;
+    color: #ffffff;
+    font-size: 13px;
+    font-weight: bold;
+    padding: 8px;
+    border-radius: 5px;
+    border: none;
+}
+
+QPushButton#cheatAddButton:hover {
+    background-color: #229954;
+}
