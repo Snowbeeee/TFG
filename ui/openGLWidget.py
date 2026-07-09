@@ -106,9 +106,8 @@ class OpenGLWidget(QOpenGLWidget):
             self.initialized = True
             print("Juego iniciado en Qt!")
             # Aplicar bindings pendientes antes de empezar
-            if self._pending_bindings and self.input_mgr:
-                ds_b, n3ds_b = self._pending_bindings
-                self.input_mgr.load_bindings(ds_b, n3ds_b)
+            if self._pending_bindings is not None and self.input_mgr:
+                self.input_mgr.load_bindings(self._pending_bindings)
             self._init_gamepad_polling()
         else:
             print("Fallo al iniciar el juego")
@@ -199,10 +198,11 @@ class OpenGLWidget(QOpenGLWidget):
 
     # Guarda bindings para aplicar cuando se cree el input_mgr.
     # Si ya existe, los aplica inmediatamente.
-    def set_pending_bindings(self, ds_bindings, n3ds_bindings):
-        self._pending_bindings = (ds_bindings, n3ds_bindings)
+    # bindings: dict de la consola que se está ejecutando (DS o 3DS, no ambas).
+    def set_pending_bindings(self, bindings):
+        self._pending_bindings = dict(bindings)
         if self.input_mgr:
-            self.input_mgr.load_bindings(ds_bindings, n3ds_bindings)
+            self.input_mgr.load_bindings(self._pending_bindings)
 
     # Intenta inicializar pygame.joystick y arranca el timer de polling.
     # pygame usa SDL2 internamente para detectar gamepads conectados.

@@ -1,5 +1,5 @@
 {
-  "volume": 27,
+  "volume": 23,
   "ds_renderer_index": 1,
   "ds_resolution_index": 2,
   "citra_resolution_index": 2,
@@ -102,29 +102,29 @@
       "type": "gamepad_button",
       "value": 6
     },
-    "up": {
+    "up": null,
+    "down": null,
+    "left": null,
+    "right": null,
+    "circle_up": {
       "type": "gamepad_axis",
       "value": 1,
       "direction": "-"
     },
-    "down": {
+    "circle_down": {
       "type": "gamepad_axis",
       "value": 1,
       "direction": "+"
     },
-    "left": {
+    "circle_left": {
       "type": "gamepad_axis",
       "value": 0,
       "direction": "-"
     },
-    "right": {
+    "circle_right": {
       "type": "gamepad_axis",
       "value": 0,
       "direction": "+"
-    },
-    "circle_up": null,
-    "circle_down": null,
-    "circle_left": null,
-    "circle_right": null
+    }
   }
 }

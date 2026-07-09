@@ -183,6 +183,21 @@ class MainWindow(QMainWindow):
         # Habilitar drag & drop de archivos
         self.setAcceptDrops(True)
 
+    # Devuelve los bindings de la consola cuyo core está corriendo ahora mismo.
+    # Se elige por extensión de la ROM para que las asignaciones de DS y 3DS
+    # no se pisen entre sí cuando comparten teclas (p.ej. WASD en D-pad DS
+    # y a la vez en Circle Pad 3DS).
+    def _bindings_para_juego(self, juego):
+        if juego is None:
+            return {}
+        if juego.extension == '.nds':
+            return self.controls_page.ds_bindings
+        if juego.extension == '.3ds':
+            return self.controls_page.n3ds_bindings
+        # Consolas sin página propia de controles (Wii/GameCube): usar DS
+        # como fallback razonable — comparte layout básico de botones.
+        return self.controls_page.ds_bindings
+
     # Construye el dict de opciones gráficas para inyectar al core libretro.
     # Estas opciones se envían con RETRO_ENVIRONMENT_SET_VARIABLE.
     def _build_core_options_extra(self):
@@ -211,8 +226,7 @@ class MainWindow(QMainWindow):
         self.game_page.load_game(juego, self._build_core_options_extra())
         # Aplicar bindings DESPUÉS de load_game (que recrea el widget)
         self.game_page.game_widget.set_pending_bindings(
-            self.controls_page.ds_bindings,
-            self.controls_page.n3ds_bindings
+            self._bindings_para_juego(juego)
         )
         # Registrar estado gráfico actual para detectar cambios en runtime
         self._prev_ds_renderer_index = self.config_page.ui.dsRendererCombo.currentIndex()
@@ -301,8 +315,7 @@ class MainWindow(QMainWindow):
     # Recarga los controles en el InputManager del juego activo
     def _on_controls_changed(self):
         self.game_page.game_widget.set_pending_bindings(
-            self.controls_page.ds_bindings,
-            self.controls_page.n3ds_bindings
+            self._bindings_para_juego(self.game_page.juego_actual)
         )
 
     # Aplica las opciones gráficas al core activo si hay juego en marcha.
@@ -340,8 +353,7 @@ class MainWindow(QMainWindow):
                 print("[Frontend] Renderer DS cambiado → recargando con savestate")
                 self.game_page.reload_game(self._build_core_options_extra())
                 self.game_page.game_widget.set_pending_bindings(
-                    self.controls_page.ds_bindings,
-                    self.controls_page.n3ds_bindings
+                    self._bindings_para_juego(self.game_page.juego_actual)
                 )
                 self.game_page.game_widget._pending_volume = self.config_page.volume / 100.0
             elif self.game_page.game_widget.core:

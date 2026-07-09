@@ -107,26 +107,21 @@ class QtInputManager:
     #   {"type": "gamepad_button", "value": int}                → botón de gamepad
     #   {"type": "gamepad_axis", "value": int, "direction": "+"/"-"} → eje de gamepad
     #   {"type": "gamepad_hat", "hat": int, "hx": int, "hy": int}    → hat/D-pad de gamepad
-    # ds_bindings: controles de DS, n3ds_bindings: controles adicionales de 3DS.
-    def load_bindings(self, ds_bindings, n3ds_bindings):
+    # bindings: mapa cfg_key → binding de la consola actualmente en juego.
+    # Se recibe solo el set correspondiente a la consola activa para evitar
+    # que la misma tecla asignada en dos consolas distintas se pise entre sí.
+    def load_bindings(self, bindings):
         # Diccionarios temporales para construir los nuevos mapeos.
         # Se crean vacíos y se rellenan con los bindings recibidos.
         new_key_map = {}              # Qt.Key → ID libretro (teclado)
         new_gp_button_map = {}        # ID libretro → índice botón gamepad
         new_gp_axis_map = {}          # ID libretro → (eje, dirección)
         new_gp_hat_map = {}           # ID libretro → (hat, hx, hy)
-        new_analog_keys = dict(self._analog_keys)  # Copiar analógicos actuales como base
+        new_analog_keys = {}          # Circle pad teclado (solo si la consola activa lo usa)
         new_gp_analog = {}            # Circle pad gamepad bindings
 
-        # Fusionar los bindings de DS y 3DS en un solo diccionario.
-        # Se aplican primero los de DS y luego los de 3DS, así los de 3DS
-        # tienen prioridad si hay conflicto (ej: botones extra como ZL/ZR).
-        combined = {}
-        combined.update(ds_bindings)
-        combined.update(n3ds_bindings)
-
-        # Recorrer todos los bindings combinados y clasificarlos según su tipo
-        for cfg_key, binding in combined.items():
+        # Recorrer los bindings de la consola activa y clasificarlos según su tipo
+        for cfg_key, binding in bindings.items():
             if binding is None:
                 continue
             btype = binding.get("type")    # Tipo de entrada: "key", "gamepad_button", etc.
