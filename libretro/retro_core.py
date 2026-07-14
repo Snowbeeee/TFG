@@ -148,6 +148,7 @@ class RetroCore:
         self.fbo_width = 0                        # Ancho actual del FBO
         self.fbo_height = 0                       # Alto actual del FBO
         self.target_fbo = None                    # FBO destino (para integración con Qt)
+        self.skip_video_output = False            # Si True, video_refresh sale sin subir textura ni blitear (fast-forward headless)
         self.save_path = None                     # Ruta del archivo de guardado (SRAM)
         self._option_refs = {}                    # Referencias a opciones para evitar limpieza del GC
         self.core_options = {}                    # Opciones de configuración del core
@@ -610,6 +611,14 @@ class RetroCore:
     # Realiza el blit (copiado) del FBO interno a la pantalla principal, aplicando el escalado calculado.
     def video_refresh(self, data, width, height, pitch):
         if width == 0 or height == 0:
+            return
+        # Fast-forward "headless": el frontend pide un frame emulado sin
+        # presentar en pantalla. Saltamos todo el trabajo GPU (upload de
+        # textura en SW, glClear + glBlitFramebuffer en HW/SW) para no
+        # saturar el command buffer del driver, que a x8/x16 provoca TDR.
+        # El core ya ha computado internamente el frame; solo evitamos
+        # copiarlo al FBO de Qt.
+        if self.skip_video_output:
             return
 
         # Manejar renderizado por Software (Desmume, etc) vs Hardware (Citra)

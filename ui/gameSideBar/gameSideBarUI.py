@@ -32,6 +32,9 @@ class GameSideBarUI(QFrame):
         self.cheatNameInput = None      # campo de nombre del nuevo cheat
         self.cheatCodeInput = None      # área de código Action Replay
         self.cheatAddButton = None      # botón añadir cheat
+        self.fastForwardSectionWidget = None  # contenedor de la sección de fast-forward (DS)
+        self.fastForwardButton = None   # botón toggle de fast-forward
+        self.fastForwardSpeedCombo = None  # combo de velocidad (x2/x4/x8/x16)
 
         self._setup_ui()
 
@@ -191,6 +194,46 @@ class GameSideBarUI(QFrame):
         cheatSectionLayout.addWidget(self.cheatAddButton)
 
         layout.addWidget(self.cheatSectionWidget)
+
+        # ── Sección Fast-Forward – DS ──
+        # Toggle que acelera la emulación de melonDS: muta el audio (libera
+        # el throttle bloqueante de PyAudio) y GameWindow ejecuta N frames
+        # extra por tick del timer. Solo tiene sentido para .nds; para
+        # 3DS/Wii/GC la sección se oculta desde set_consola.
+        self.fastForwardSectionWidget = QWidget()
+        self.fastForwardSectionWidget.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
+        ffSectionLayout = QVBoxLayout(self.fastForwardSectionWidget)
+        ffSectionLayout.setContentsMargins(0, 0, 0, 0)
+        ffSectionLayout.setSpacing(8)
+
+        tituloFF = QLabel("Fast-Forward – DS")
+        tituloFF.setObjectName("gameSideBarSectionTitle")
+        ffSectionLayout.addWidget(tituloFF)
+
+        self.fastForwardButton = QPushButton("Acelerar ▶▶")
+        self.fastForwardButton.setObjectName("fastForwardButton")
+        self.fastForwardButton.setCheckable(True)
+        self.fastForwardButton.setCursor(Qt.CursorShape.PointingHandCursor)
+        ffSectionLayout.addWidget(self.fastForwardButton)
+
+        ffSpeedRow = QHBoxLayout()
+        ffSpeedRow.setSpacing(10)
+        ffSpeedLabel = QLabel("Velocidad")
+        ffSpeedLabel.setObjectName("gameSideBarLabel")
+        ffSpeedRow.addWidget(ffSpeedLabel)
+
+        self.fastForwardSpeedCombo = QComboBox()
+        self.fastForwardSpeedCombo.setObjectName("gameSideBarCombo")
+        # (texto visible, frames extra por tick). El multiplicador real es
+        # extra_frames + 1 (el frame que ya dispara paintGL normalmente).
+        for texto, extra in (("x2", 1), ("x4", 3), ("x8", 7), ("x16", 15)):
+            self.fastForwardSpeedCombo.addItem(texto, extra)
+        # Default: x4 (3 frames extra)
+        self.fastForwardSpeedCombo.setCurrentIndex(1)
+        ffSpeedRow.addWidget(self.fastForwardSpeedCombo, 1)
+        ffSectionLayout.addLayout(ffSpeedRow)
+
+        layout.addWidget(self.fastForwardSectionWidget)
 
         # ── Espacio flexible ──
         layout.addStretch()

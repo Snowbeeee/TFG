@@ -200,3 +200,28 @@ QPushButton#cheatAddButton {
 QPushButton#cheatAddButton:hover {
     background-color: #229954;
 }
+
+/* ── Fast-Forward ── */
+
+QPushButton#fastForwardButton {
+    background-color: #34495e;
+    color: #ffffff;
+    font-size: 13px;
+    font-weight: bold;
+    padding: 8px;
+    border-radius: 5px;
+    border: none;
+}
+
+QPushButton#fastForwardButton:hover {
+    background-color: #3d566e;
+}
+
+QPushButton#fastForwardButton:checked {
+    background-color: #f39c12;
+    color: #ffffff;
+}
+
+QPushButton#fastForwardButton:checked:hover {
+    background-color: #d68910;
+}

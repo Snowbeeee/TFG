@@ -55,6 +55,21 @@ class OpenGLWidget(QOpenGLWidget):
         # Bindings pendientes: se aplican cuando se crea un nuevo input_mgr
         self._pending_bindings = None
 
+        # ── Detección de cambio de dispositivo de audio ──
+        # PortAudio congela la lista de dispositivos en Pa_Initialize(), así
+        # que si el usuario cambia el default de Windows (bandeja del sistema)
+        # el juego seguiría sonando por el dispositivo antiguo. Este timer
+        # comprueba el default fresco cada 2 s y reabre el stream si cambió.
+        self._audio_device_check_timer = QTimer(self)
+        self._audio_device_check_timer.setInterval(2000)
+        self._audio_device_check_timer.timeout.connect(self._check_audio_device)
+
+        # ── Fast-forward ──
+        # Cuando está activo, el AudioManager entra en modo mudo (libera el
+        # throttle bloqueante de PyAudio) y GameWindow ejecuta varios frames
+        # extra por tick del timer. Se activa con Tab (hold).
+        self._fast_forward = False
+
     # Callback de Qt: se llama una sola vez cuando el contexto GL está listo.
     # No se puede usar OpenGL antes de que este método se ejecute.
     def initializeGL(self):
@@ -109,6 +124,7 @@ class OpenGLWidget(QOpenGLWidget):
             if self._pending_bindings is not None and self.input_mgr:
                 self.input_mgr.load_bindings(self._pending_bindings)
             self._init_gamepad_polling()
+            self._audio_device_check_timer.start()
         else:
             print("Fallo al iniciar el juego")
 
@@ -119,6 +135,7 @@ class OpenGLWidget(QOpenGLWidget):
     # para el siguiente juego o se destruye con el widget.
     def unload_game(self):
         self._gamepad_poll_timer.stop()
+        self._audio_device_check_timer.stop()
         self._pygame_joystick = None
         if self.core:
             # makeCurrent() antes de unload: es necesario porque los recursos
@@ -195,6 +212,7 @@ class OpenGLWidget(QOpenGLWidget):
         self.initialized = False
         self.core_path = None
         self.rom_path = None
+        self._fast_forward = False
 
     # Guarda bindings para aplicar cuando se cree el input_mgr.
     # Si ya existe, los aplica inmediatamente.
@@ -221,6 +239,16 @@ class OpenGLWidget(QOpenGLWidget):
         except ImportError:
             self._pygame_joystick = None
         self._gamepad_poll_timer.start()
+
+    # Slot del _audio_device_check_timer: delega en AudioManager para
+    # comparar el default del sistema con el que abrimos y reabrir si cambió.
+    # Cada tick imprime en consola qué ve Qt para poder diagnosticar
+    # visualmente si el polling está activo y qué default detecta.
+    def _check_audio_device(self):
+        if self.audio_mgr:
+            qt_name = self.audio_mgr._qt_default_output_name()
+            print(f"[Audio poll] Qt default='{qt_name}' | stream abierto en='{self.audio_mgr._device_name}'")
+            self.audio_mgr.check_default_device_changed()
 
     # Lee el estado actual del gamepad (botones, ejes, hats) y lo pasa al InputManager.
     # También gestiona hot-plug: detecta conexión/desconexión de mandos via eventos SDL2
@@ -300,6 +328,36 @@ class OpenGLWidget(QOpenGLWidget):
     def keyReleaseEvent(self, event):
         if self.input_mgr:
             self.input_mgr.handle_key_release(event.key())
+
+    # Activa/desactiva fast-forward. Muta el audio (libera el throttle
+    # bloqueante de PyAudio) y marca el flag que GameWindow consulta para
+    # ejecutar frames extra por tick.
+    def set_fast_forward(self, enabled):
+        enabled = bool(enabled)
+        if enabled == self._fast_forward:
+            return
+        self._fast_forward = enabled
+        if self.audio_mgr:
+            self.audio_mgr.set_muted(enabled)
+
+    # Ejecuta un frame emulado sin presentar en pantalla. Usado por
+    # GameWindow durante fast-forward para multiplicar la velocidad.
+    # skip_video_output=True hace que video_refresh salga inmediatamente,
+    # sin subir textura ni blitear al FBO de Qt: la CPU emula el frame,
+    # el core HW renderiza a su FBO interno (parte inevitable), pero se
+    # evita el pico de comandos GPU que a x8/x16 causaba TDR en Windows.
+    # No llamamos a set_target_fbo/update_video porque solo se usan en
+    # el blit final que ahora se salta.
+    def run_extra_frame(self):
+        if not (self.initialized and self.core and self.core.lib):
+            return
+        self.makeCurrent()
+        try:
+            self.core.skip_video_output = True
+            self.core.run()
+        finally:
+            self.core.skip_video_output = False
+            self.doneCurrent()
 
     # ── Eventos de ratón (simulan pantalla táctil) ──
     # Las coordenadas del ratón se multiplican por dpr para convertir

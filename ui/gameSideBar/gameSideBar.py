@@ -19,6 +19,8 @@ class GameSideBar(QFrame):
     resolucion_cambiada = pyqtSignal()
     salir_clicked = pyqtSignal()
     cheats_cambiados = pyqtSignal(list)  # emite la lista completa de cheats al cambiar
+    fast_forward_cambiado = pyqtSignal(bool)  # emite True/False al activar fast-forward
+    fast_forward_speed_cambiada = pyqtSignal(int)  # emite frames extra por tick al cambiar velocidad
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -42,6 +44,8 @@ class GameSideBar(QFrame):
         self.ui.citraResolutionCombo.currentIndexChanged.connect(self._on_citra_resolution_changed)
         self.ui.pushButtonSalir.clicked.connect(self.salir_clicked.emit)
         self.ui.cheatAddButton.clicked.connect(self._on_add_cheat)
+        self.ui.fastForwardButton.toggled.connect(self.fast_forward_cambiado.emit)
+        self.ui.fastForwardSpeedCombo.currentIndexChanged.connect(self._on_ff_speed_changed)
 
         self._actualizar_visibilidad_ds_res()
 
@@ -66,6 +70,12 @@ class GameSideBar(QFrame):
         self.ui.dsSectionWidget.setVisible(es_ds)
         self.ui.citraSectionWidget.setVisible(es_3ds)
         self.ui.cheatSectionWidget.setVisible(es_ds)
+        self.ui.fastForwardSectionWidget.setVisible(es_ds)
+        # Al cambiar de juego reseteamos el toggle para no arrastrar estado.
+        # blockSignals evita emitir fast_forward_cambiado(False) durante el reset.
+        self.ui.fastForwardButton.blockSignals(True)
+        self.ui.fastForwardButton.setChecked(False)
+        self.ui.fastForwardButton.blockSignals(False)
 
     # Carga los cheats del archivo JSON asociado a la ROM y actualiza la lista.
     def cargar_cheats(self, rom_name):
@@ -239,6 +249,13 @@ class GameSideBar(QFrame):
     def citra_resolution_index(self):
         return self.ui.citraResolutionCombo.currentIndex()
 
+    # Devuelve los frames extra por tick seleccionados en el combo de velocidad.
+    # El multiplicador real de velocidad es este valor + 1.
+    @property
+    def fast_forward_extra_frames(self):
+        data = self.ui.fastForwardSpeedCombo.currentData()
+        return int(data) if data is not None else 3
+
     # ── Slots internos ──
 
     def _on_volume_changed(self, value):
@@ -264,6 +281,11 @@ class GameSideBar(QFrame):
             return
         if not self._syncing:
             self.resolucion_cambiada.emit()
+
+    def _on_ff_speed_changed(self, index):
+        if index < 0:
+            return
+        self.fast_forward_speed_cambiada.emit(self.fast_forward_extra_frames)
 
     def _actualizar_visibilidad_ds_res(self):
         es_opengl = self.ui.dsRendererCombo.currentIndex() == 1

@@ -35,9 +35,17 @@ class GameWindow(QWidget):
         self.timer = QTimer()
         self.timer.timeout.connect(self._on_frame)
 
+        # Frames emulados extra por tick del timer al activar fast-forward,
+        # además del frame que dispara paintGL. Se sincroniza con el combo
+        # de velocidad de la sidebar (x2=1, x4=3, x8=7, x16=15). El valor
+        # inicial se establece más abajo tras crear la sidebar.
+        self._ff_extra_frames = self.ui.gameSideBar.fast_forward_extra_frames
+
         # Conectar botón salir de la sidebar
         self.ui.gameSideBar.salir_clicked.connect(self._salir)
         self.ui.gameSideBar.cheats_cambiados.connect(self._on_cheats_cambiados)
+        self.ui.gameSideBar.fast_forward_cambiado.connect(self._on_fast_forward_cambiado)
+        self.ui.gameSideBar.fast_forward_speed_cambiada.connect(self._on_fast_forward_speed_cambiada)
 
         self._pending_cheats = None  # cheats a aplicar cuando el core esté listo
 
@@ -73,6 +81,14 @@ class GameWindow(QWidget):
         self.game_widget = OpenGLWidget(self.ui.openglContainer)
         self._container_layout.addWidget(self.game_widget)
 
+        # El widget nuevo arranca con fast-forward apagado. Reseteamos el
+        # botón de la sidebar para que refleje el estado real y no quede
+        # "pulsado sin efecto" tras un cambio de renderer (reload_game).
+        ff_btn = self.ui.gameSideBar.ui.fastForwardButton
+        ff_btn.blockSignals(True)
+        ff_btn.setChecked(False)
+        ff_btn.blockSignals(False)
+
     # Tick del timer (~60 Hz): restaura savestate si hay uno pendiente,
     # actualiza el contador de FPS y repinta el widget OpenGL.
     # perf_counter: reloj monotonónico de nanosegundos, ideal para medir
@@ -87,12 +103,25 @@ class GameWindow(QWidget):
             state = self._pending_state
             self._pending_state = None
             QTimer.singleShot(32, lambda: self._restore_state(state))
-        self._fps_frame_count += 1
+
+        # Fast-forward: ejecuta frames extra sin repintar antes del paintGL.
+        # Con el audio mudo (set en OpenGLWidget.set_fast_forward), PyAudio
+        # no bloquea y el core corre a máxima velocidad. Contamos los frames
+        # extra en el contador de FPS para que el overlay refleje la velocidad
+        # real de emulación.
+        extra_frames = 0
+        if self.game_widget._fast_forward and self.game_widget.initialized:
+            for _ in range(self._ff_extra_frames):
+                self.game_widget.run_extra_frame()
+                extra_frames += 1
+
+        self._fps_frame_count += 1 + extra_frames
         now = time.perf_counter()
         elapsed = now - self._fps_last_time
         if elapsed >= 0.5:
             fps = self._fps_frame_count / elapsed
-            self._fps_label.setText(f"FPS: {fps:.1f}")
+            suffix = " ▶▶" if self.game_widget._fast_forward else ""
+            self._fps_label.setText(f"FPS: {fps:.1f}{suffix}")
             self._fps_label.adjustSize()
 
             self._fps_frame_count = 0
@@ -186,6 +215,17 @@ class GameWindow(QWidget):
     # mientras el core está emulando.
     def _on_cheats_cambiados(self, cheats):
         self._pending_cheats = list(cheats)
+
+    # Reenvía el toggle de fast-forward al OpenGLWidget, que muta el audio
+    # y activa el flag consultado por _on_frame para correr frames extra.
+    def _on_fast_forward_cambiado(self, activo):
+        if self.game_widget:
+            self.game_widget.set_fast_forward(activo)
+
+    # Actualiza el número de frames extra por tick. El cambio surte efecto
+    # en el próximo tick del timer sin necesidad de reiniciar el fast-forward.
+    def _on_fast_forward_speed_cambiada(self, extra_frames):
+        self._ff_extra_frames = max(0, int(extra_frames))
 
     # Descarga el juego y emite señal con el juego que se estaba ejecutando
     def _salir(self):
