@@ -1,7 +1,7 @@
 @echo off
 REM ============================================================
-REM  build.bat – Genera un único TFG.exe en bin/
-REM  Uso:  build.bat          (desde la raíz del proyecto)
+REM  build.bat - Genera un unico TFG.exe en bin/
+REM  Uso:  build.bat          (desde la raiz del proyecto)
 REM ============================================================
 
 echo [1/3] Comprobando Python...
@@ -9,24 +9,26 @@ python --version >nul 2>&1
 if %ERRORLEVEL% neq 0 (
     echo Python no encontrado. Descargando instalador oficial...
     powershell -Command "Invoke-WebRequest -Uri 'https://www.python.org/ftp/python/3.11.9/python-3.11.9-amd64.exe' -OutFile 'python_installer.exe'"
-    if %ERRORLEVEL% neq 0 (
+    if errorlevel 1 (
         echo ERROR: No se pudo descargar Python. Comprueba tu conexion a internet.
         pause
         exit /b 1
     )
-    echo Instalando Python (instalacion por usuario, sin permisos de admin)...
+    echo Instalando Python ^(instalacion por usuario, sin permisos de admin^)...
     REM /quiet: sin UI. InstallAllUsers=0: por-usuario, no requiere admin.
-    REM PrependPath=1: anade python y Scripts al PATH (solo en cmds NUEVOS).
+    REM PrependPath=1: anade python y Scripts al PATH -- solo en cmds NUEVOS.
     REM Include_pip=1: fuerza la instalacion de pip aunque el usuario lo hubiera desactivado.
     python_installer.exe /quiet InstallAllUsers=0 PrependPath=1 Include_test=0 Include_pip=1
-    set INSTALL_ERR=%ERRORLEVEL%
-    del python_installer.exe
-    if %INSTALL_ERR% neq 0 (
-        echo ERROR: La instalacion de Python fallo con codigo %INSTALL_ERR%.
+    REM "if errorlevel 1" lee el codigo de salida en runtime; usar %ERRORLEVEL%
+    REM dentro de un bloque entre parentesis no funciona -- se expande en parseo.
+    if errorlevel 1 (
+        del python_installer.exe >nul 2>&1
+        echo ERROR: La instalacion de Python fallo.
         echo Prueba a instalar Python 3.11 manualmente desde python.org.
         pause
         exit /b 1
     )
+    del python_installer.exe
     echo.
     echo ================================================================
     echo   Python instalado correctamente.
@@ -42,7 +44,7 @@ python -m pip --version >nul 2>&1
 if %ERRORLEVEL% neq 0 (
     echo pip no encontrado en esta instalacion de Python. Instalandolo con ensurepip...
     python -m ensurepip --default-pip
-    if %ERRORLEVEL% neq 0 (
+    if errorlevel 1 (
         echo ERROR: No se pudo instalar pip automaticamente.
         echo Reinstala Python 3.11 desde python.org marcando "Install pip".
         pause
@@ -63,7 +65,7 @@ if %ERRORLEVEL% neq 0 (
     exit /b 1
 )
 
-REM Comprobar si TFG.exe está en uso antes de compilar
+REM Comprobar si TFG.exe esta en uso antes de compilar
 if exist TFG.exe (
     del /F TFG.exe >nul 2>&1
     if exist TFG.exe (
