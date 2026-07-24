@@ -50,6 +50,9 @@ a = Analysis(
         'OpenGL.plugins',
         # PyAudio
         'pyaudio',
+        # PyQt6 – QtMultimedia (usado por AudioManager para detectar
+        # cambios de dispositivo de salida por defecto en Windows)
+        'PyQt6.QtMultimedia',
         # PIL / Pillow
         'PIL',
         'PIL.Image',
